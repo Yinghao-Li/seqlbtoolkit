@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name='SeqLbToolkit',
-    version='0.0.2',
+    version='0.0.3',
     author='Yinghao Li',
     author_email='yinghaoli@gatech.edu',
     license='MIT',
@@ -15,17 +15,6 @@ setup(
     long_description_content_type="text/markdown",
     keywords='nlp sequence-labeling ml machine-learning natural-language-processing',
     zip_safe=False,
-    install_requires=[
-        'nltk',
-        'numpy',
-        'regex',
-        'seqeval',
-        'torch',
-        'tqdm',
-        'transformers',
-        'pytokenizations',
-        'pytextspan'
-    ],
     classifiers=[
         'Intended Audience :: Developers',
         'Intended Audience :: Science/Research',
