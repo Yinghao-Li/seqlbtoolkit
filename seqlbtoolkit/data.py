@@ -71,6 +71,10 @@ def txt_to_token_span(tokens: List[str],
     :return: a list of transferred span tuples.
     """
     token_indices = get_original_spans(tokens, text)
+    try:
+        token_indices = [item[0] for item in token_indices]
+    except IndexError as e:
+        logger.error(f"Encountered token(s) not in original text: {e}")
     if isinstance(txt_spans, list):
         tgt_spans = list()
         for txt_span in txt_spans:
@@ -121,6 +125,10 @@ def token_to_txt_span(tokens: List[str],
     :return: a list of transferred span tuples.
     """
     token_indices = get_original_spans(tokens, text)
+    try:
+        token_indices = [item[0] for item in token_indices]
+    except IndexError as e:
+        logger.error(f"Encountered token(s) not in original text: {e}")
     if isinstance(token_spans, dict):
         tgt_spans = dict()
         for token_span, value in token_spans.items():
