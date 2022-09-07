@@ -125,7 +125,7 @@ def prettify_json(text, indent=2, collapse_level=4):
     my_instance = list()  # user-defined serializable data structure
     json_text = json.dumps(my_instance, indent=2, ensure_ascii=False)
     json_text = prettify_json(json_text, indent=2, collapse_level=4)
-    with open(path_to_file, 'w', encoding='utf=8`) as f:
+    with open(path_to_file, 'w', encoding='utf=8') as f:
         f.write(json_text)
     ```
     """
