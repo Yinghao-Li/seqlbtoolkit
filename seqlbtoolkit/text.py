@@ -27,7 +27,7 @@ def format_text(text, remove_ref: Optional[bool] = False, remove_emoj: Optional[
     text = regex.sub(interpunct, ' ', text)
 
     # deal with invisible characters
-    text = regex.sub(r'[\u2060-\u2061]', '', text)
+    text = regex.sub(r'[\u2060-\u2061|\u200b]', '', text)
 
     # deal with bullets
     bullets = r'[\u2022\u2023\u2043\u204C\u204D\u2219\u25CB\u25D8\u25E6' \
