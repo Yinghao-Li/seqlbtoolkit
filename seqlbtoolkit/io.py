@@ -1,6 +1,9 @@
+from lib2to3.pgen2.token import OP
+from optparse import Option
 import os
 import re
 import tqdm
+import json
 import shutil
 import logging
 from pathlib import Path
@@ -116,15 +119,50 @@ def init_dir(directory: str):
     return None
 
 
+def save_json(obj, path: str, collapse_level: Optional[int] = None):
+    """
+    Save objective to a json file.
+    Create this function so that we don't need to worry about creating parent folders every time
+
+    Parameters
+    ----------
+    obj: the objective to save
+    path: the path to save
+    collapse_level: set to any collapse value to prettify output json accordingly
+
+    Returns
+    -------
+    None
+    """
+    file_dir = os.path.split(path)[0]
+    os.makedirs(file_dir, exist_ok=True)
+
+    json_obj = json.dumps(obj, indent=2, ensure_ascii=False)
+    if collapse_level:
+        json_obj = prettify_json(json_obj, collapse_level=collapse_level)
+
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(json_obj)
+
+    return None
+
+
 def prettify_json(text, indent=2, collapse_level=4):
     """
     Make json file more readable by collapsing indent levels higher than `collapse_level`.
 
-    Usage:
+    Parameters
+    ----------
+    text: input json text obj
+    indent: the indent value of your json text. Notice that this value needs to be larger than 0
+    collapse_level: the level from which the program stops adding new lines
+
+    Usage
+    -----
     ```
     my_instance = list()  # user-defined serializable data structure
-    json_text = json.dumps(my_instance, indent=2, ensure_ascii=False)
-    json_text = prettify_json(json_text, indent=2, collapse_level=4)
+    json_obj = json.dumps(my_instance, indent=2, ensure_ascii=False)
+    json_obj = prettify_json(json_text, indent=2, collapse_level=4)
     with open(path_to_file, 'w', encoding='utf=8') as f:
         f.write(json_text)
     ```
