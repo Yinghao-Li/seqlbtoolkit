@@ -26,6 +26,9 @@ def format_text(text, remove_ref: Optional[bool] = False, remove_emoj: Optional[
                  r'\u25CF\u25E6\u26AB\u2981\u2E30\u2E31\u2E33\u30FB\uA78F\uFF65]'
     text = regex.sub(interpunct, ' ', text)
 
+    # deal with word joiner
+    text = regex.sub(r'\u2060', '', text)
+
     # deal with bullets
     bullets = r'[\u2022\u2023\u2043\u204C\u204D\u2219\u25CB\u25D8\u25E6' \
               r'\u2619\u2765\u2767\u29BE\u29BF]'
