@@ -4,18 +4,16 @@ import copy
 import logging
 import functools
 import numpy as np
-from tqdm import tqdm
 from typing import List, Optional, Union, Tuple
 from seqeval.metrics import classification_report
 from seqeval.scheme import IOB2
 
 import torch
 from torch.utils.data import DataLoader
-from transformers import AutoTokenizer, AutoModel
 
 from .config import CHMMBaseConfig
 from ..data import entity_to_bio_labels, one_hot, probs_to_lbs
-from ..text import separate_lengthy_paragraph
+from ..embs import build_bert_token_embeddings
 from ..base_model.dataset import load_data_from_json, load_data_from_pt
 
 logger = logging.getLogger(__name__)
@@ -332,7 +330,7 @@ class CHMMBaseDataset(torch.utils.data.Dataset):
         """
         assert bert_model is not None, AssertionError('Please specify BERT model to build embeddings')
         logger.info(f'Building BERT embeddings with {bert_model} on {device}')
-        self._embs = build_embeddings(self._text, bert_model, device)
+        self._embs = build_bert_token_embeddings(self._text, bert_model, bert_model, device, True)
         if save_dir:
             save_dir = os.path.normpath(save_dir)
             logger.info(f'Saving embeddings to {save_dir}...')
@@ -513,94 +511,6 @@ def collate_fn(insts):
         logger.error('Unsupported number of instances')
         raise ValueError('Unsupported number of instances')
     return batch
-
-
-def build_bert_emb(sents: List[str],
-                   tokenizer,
-                   model,
-                   device: str):
-    sent_emb_list = list()
-
-    for sent_tks in tqdm(sents):
-
-        encs = tokenizer(sent_tks, is_split_into_words=True, add_special_tokens=True, return_offsets_mapping=True)
-        input_ids = torch.tensor([encs.input_ids], device=device)
-        offsets_mapping = np.array(encs.offset_mapping)
-
-        # calculate BERT last layer embeddings
-        with torch.no_grad():
-            # get the last hidden state from the BERT model
-            last_hidden_states = model(input_ids)[0].squeeze(0).to('cpu')
-            # remove the token embeddings regarding the [CLS] and [SEP]
-            trunc_hidden_states = last_hidden_states[1:-1, :]
-
-        ori2bert_tk_ids = list()
-        idx = 0
-        for tk_start in (offsets_mapping[1:-1, 0] == 0):
-            if tk_start:
-                ori2bert_tk_ids.append([idx])
-            else:
-                ori2bert_tk_ids[-1].append(idx)
-            idx += 1
-
-        emb_list = list()
-        for ids in ori2bert_tk_ids:
-            embeddings = trunc_hidden_states[ids, :]  # first dim could be 1 or n
-            emb_list.append(embeddings.mean(dim=0))
-
-        # add back the embedding of [CLS] as the sentence embedding
-        emb_list = [last_hidden_states[0, :]] + emb_list
-        bert_emb = torch.stack(emb_list)
-        assert not bert_emb.isnan().any(), ValueError('NaN Embeddings!')
-        sent_emb_list.append(bert_emb.detach().cpu())
-
-    return sent_emb_list
-
-
-# noinspection PyTypeChecker
-def build_embeddings(src_sents, bert_model, device):
-
-    tokenizer = AutoTokenizer.from_pretrained(bert_model)
-    model = AutoModel.from_pretrained(bert_model).to(device)
-
-    separated_sentences = list()
-    ori2sep_ids_map = list()
-    n = 0
-
-    # update input sentences so that every sentence has BERT length < 510
-    logger.info('Checking lengths. Paragraphs longer than 512 tokens will be separated.')
-    for sent_tks in src_sents:
-        sent_tks_list, _, _ = separate_lengthy_paragraph(sent_tks, tokenizer)
-        n_seps = len(sent_tks_list)
-        separated_sentences += sent_tks_list
-
-        ori2sep_ids_map.append(list(range(n, n + n_seps)))
-        n += n_seps
-
-    logger.info('Constructing embeddings...')
-    sent_emb_list = build_bert_emb(separated_sentences, tokenizer, model, device)
-
-    # Combine embeddings so that the embedding lengths equal to the lengths of the original sentences
-    logger.info('Combining results...')
-    comb_sent_emb_list = list()
-
-    for sep_ids in ori2sep_ids_map:
-        cat_emb = None
-
-        for sep_idx in sep_ids:
-            if cat_emb is None:
-                cat_emb = sent_emb_list[sep_idx]
-            else:
-                cat_emb = torch.cat([cat_emb, sent_emb_list[sep_idx][1:]], dim=0)
-
-        assert cat_emb is not None, ValueError('Empty sentence BERT embedding!')
-        comb_sent_emb_list.append(cat_emb)
-
-    # The embeddings of [CLS] + original tokens
-    for emb, sent_tks in zip(comb_sent_emb_list, src_sents):
-        assert len(emb) == len(sent_tks) + 1
-
-    return comb_sent_emb_list
 
 
 def load_src_metrics(file_path: str):

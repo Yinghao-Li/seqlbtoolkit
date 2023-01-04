@@ -11,7 +11,7 @@ from transformers import (
     BatchEncoding
 )
 
-from ..text import separate_lengthy_paragraph
+from ..text import split_overlength_bert_input_sequence
 from ..base_model.dataset import load_data_from_json, load_data_from_pt
 from ..base_model.config import BaseNERConfig
 
@@ -30,7 +30,7 @@ class BertNERBaseDataset(torch.utils.data.Dataset):
         super().__init__()
         self._text = text
         self._lbs = lbs
-        # splitted text so that every sentence is within maximum length when they are converted to BERT tokens
+        # split text so that every sentence is within maximum length when they are converted to BERT tokens
         self._encoded_texts = encoded_texts
         self._encoded_lbs = encoded_lbs if encoded_lbs is not None else list()
         # mapping from original sentences to splitted ones ([[1.1, 1.2], [2], [3]])
@@ -107,7 +107,7 @@ class BertNERBaseDataset(torch.utils.data.Dataset):
         mapping_ids = list()
         for text in self._text:
             # separate a sentence into several pieces if it exceeds the maximum length
-            st, st_lens, st_ids = separate_lengthy_paragraph(text, tokenizer, config.max_length)
+            st, st_lens, st_ids = split_overlength_bert_input_sequence(text, tokenizer, config.max_length)
             sp_text += st
 
             if not mapping_ids:
@@ -160,7 +160,7 @@ class BertNERBaseDataset(torch.utils.data.Dataset):
         mapping_ids = list()
         for text, lbs in zip(self._text, self._lbs):
             # break a sentence into several pieces if it exceeds the maximum length
-            st, st_lens, st_ids = separate_lengthy_paragraph(text, tokenizer, config.max_length)
+            st, st_lens, st_ids = split_overlength_bert_input_sequence(text, tokenizer, config.max_length)
             sp_text += st
 
             start_idx = 0

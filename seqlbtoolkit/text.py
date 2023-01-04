@@ -163,34 +163,34 @@ def substring_mapping(text: str, mapping_dict: dict):
     return text
 
 
-def separate_lengthy_paragraph(sent_tks: List[str], tokenizer, max_length: Optional[int] = 512):
+def split_overlength_bert_input_sequence(tks: List[str], tokenizer, max_seq_length: Optional[int] = 512):
     """
     Break the sentences that exceeds the maximum BERT length
 
     Parameters
     ----------
-    sent_tks: A list of tokens that are in the original token format (instead of BERT BPE format)
+    tks: A list of tokens that are in the original token format (instead of BERT BPE format)
     tokenizer: BERT tokenizer
-    max_length: maximum BERT length
+    max_seq_length: maximum BERT length
 
     Returns
     -------
-    1.sent_tks_list: a list of separated text
+    1. sent_tks_list: a list of separated text
     2. the lengths of the broken text
     3. a list of the indices of the separated text
     """
 
     # Deal with sentences that are longer than 512 BERT tokens
-    if len(tokenizer.tokenize(' '.join(sent_tks), add_special_tokens=True)) >= max_length:
-        sent_tks_list = [sent_tks]
+    if len(tokenizer.tokenize(' '.join(tks), add_special_tokens=True)) >= max_seq_length:
+        sent_tks_list = [tks]
         bert_length_list = [len(tokenizer.tokenize(' '.join(t), add_special_tokens=True)) for t in sent_tks_list]
 
-        while (np.asarray(bert_length_list) >= max_length).any():
+        while (np.asarray(bert_length_list) >= max_seq_length).any():
             sep_sent_tks_list = list()
 
             for tks_list, bert_len in zip(sent_tks_list, bert_length_list):
 
-                if bert_len < max_length:
+                if bert_len < max_seq_length:
                     sep_sent_tks_list.append(tks_list)
                     continue
 
@@ -210,13 +210,13 @@ def separate_lengthy_paragraph(sent_tks: List[str], tokenizer, max_length: Optio
             bert_length_list = [len(tokenizer.tokenize(' '.join(t), add_special_tokens=True)) for t in sent_tks_list]
 
         sent_lengths = [len(s) for s in sent_tks_list]
-        assert np.sum(sent_lengths) == len(sent_tks), \
-            ValueError(f'Text splitting failed: {sent_tks} ---> {sent_tks_list}')
+        assert np.sum(sent_lengths) == len(tks), \
+            ValueError(f'Text splitting failed: {tks} ---> {sent_tks_list}')
 
         return sent_tks_list, sent_lengths, np.arange(len(sent_tks_list))
 
     else:
-        return [sent_tks], [len(sent_tks)], np.array([0], dtype=np.int)
+        return [tks], [len(tks)], np.array([0], dtype=np.int)
 
 
 def remove_invalid_parenthesis(sent: str) -> str:
