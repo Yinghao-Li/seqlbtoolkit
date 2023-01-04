@@ -74,7 +74,10 @@ def build_bert_token_embeddings(tk_seq_list: List[List[str]],
 
     # The embeddings of [CLS] + original tokens
     for emb, tk_seq in zip(tk_emb_seq_list, tk_seq_list):
-        assert len(emb) == len(tk_seq) + 1  # check the length of embeddings equals to the length of sequence
+        if prepend_cls_embs:
+            assert len(emb) == len(tk_seq) + 1  # check the length of embeddings equals to the length of sequence
+        else:
+            assert len(emb) == len(tk_seq)
 
     return tk_emb_seq_list
 
