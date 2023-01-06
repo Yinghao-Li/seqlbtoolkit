@@ -2,8 +2,9 @@ import os
 import re
 import json
 import logging
-from typing import Optional
+from typing import Optional, List
 from string import printable
+from dataclasses import dataclass
 
 import torch
 import numpy as np
@@ -17,6 +18,59 @@ from ..data import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class DataInstance:
+    text: List[str] = None
+    embs: torch.Tensor = None
+    lbs: List[str] = None
+
+    def __setitem__(self, k, v):
+        self.__dict__.update(zip(k, v) if type(k) is tuple else [(k, v)])
+
+
+def feature_lists_to_instance_list(instance_class, **kwargs):
+    data_points = list()
+    keys = tuple(kwargs.keys())
+
+    for feature_point_list in zip(*tuple(kwargs.values())):
+        inst = instance_class()
+        inst[keys] = feature_point_list
+        data_points.append(inst)
+
+    return data_points
+
+
+def instance_list_to_feature_lists(instance_list: list, feature_names: Optional[List[str]] = None):
+    if not feature_names:
+        feature_names = list(instance_list[0].__dict__.keys())
+
+    features_lists = list()
+    for name in feature_names:
+        features_lists.append([getattr(inst, name) for inst in instance_list])
+
+    return features_lists
+
+
+class Batch:
+    def __init__(self, **kwargs):
+        super().__init__()
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+    def to(self, device):
+        for k, v in self.__dict__.items():
+            try:
+                setattr(self, k, v.to(device))
+            except AttributeError:
+                pass
+        return self
+
+    def __len__(self):
+        for v in list(self.__dict__.values()):
+            if isinstance(v, torch.Tensor):
+                return v.size(0)
 
 
 def load_data_from_json(file_dir: str, config: Optional[BaseNERConfig] = None):
