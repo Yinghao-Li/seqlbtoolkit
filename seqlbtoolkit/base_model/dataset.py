@@ -22,10 +22,6 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class DataInstance:
-    text: List[str] = None
-    embs: torch.Tensor = None
-    lbs: List[str] = None
-
     def __setitem__(self, k, v):
         self.__dict__.update(zip(k, v) if type(k) is tuple else [(k, v)])
 
