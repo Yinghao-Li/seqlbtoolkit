@@ -216,7 +216,7 @@ def split_overlength_bert_input_sequence(tks: List[str], tokenizer, max_seq_leng
         return sent_tks_list, sent_lengths, np.arange(len(sent_tks_list))
 
     else:
-        return [tks], [len(tks)], np.array([0], dtype=np.int)
+        return [tks], [len(tks)], np.array([0], dtype=int)
 
 
 def remove_invalid_parenthesis(sent: str) -> str:

@@ -130,7 +130,7 @@ class BertNERBaseDataset(torch.utils.data.Dataset):
             arr_offset = np.array(doc_offset)
 
             # create an empty array of False
-            masks = np.zeros(len(doc_offset), dtype=np.bool)
+            masks = np.zeros(len(doc_offset), dtype=bool)
             masks[(arr_offset[:, 0] == 0) & (arr_offset[:, 1] != 0)] = True
             token_masks.append(masks)
         self._token_masks = token_masks
@@ -209,7 +209,7 @@ class BertNERBaseDataset(torch.utils.data.Dataset):
             encoded_labels.append(doc_enc_labels.tolist())
 
             # create an empty array of False
-            masks = np.zeros(len(doc_offset), dtype=np.bool)
+            masks = np.zeros(len(doc_offset), dtype=bool)
             masks[(arr_offset[:, 0] == 0) & (arr_offset[:, 1] != 0)] = True
             token_masks.append(masks)
         self._encoded_lbs = encoded_labels
