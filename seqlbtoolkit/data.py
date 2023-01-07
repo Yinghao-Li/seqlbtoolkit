@@ -404,3 +404,23 @@ def rand_argmax(x, **kwargs):
     https://stackoverflow.com/questions/42071597/numpy-argmax-random-tie-breaking/42071648
     """
     return np.argmax(np.random.random(x.shape) * (x == np.amax(x, **kwargs, keepdims=True)), **kwargs)
+
+
+def lengths_to_mask(lengths: Union[torch.Tensor, List[int]]):
+    """
+    Convert sequence lengths to boolean mask.
+
+    Parameters
+    ----------
+    lengths: sequence lengths; Should be Int/Long Tensor with shape (batch_size, )
+
+    Returns
+    -------
+    torch.Tensor, Boolean Tensor with shape (batch_size, maximum length).
+    The paddings are marked as False.
+    """
+    if isinstance(lengths, list):
+        lengths = torch.tensor(lengths, dtype=torch.long)
+    max_length = lengths.max()
+    padding_masks = torch.arange(max_length)[None, :] < lengths[:, None]
+    return padding_masks
