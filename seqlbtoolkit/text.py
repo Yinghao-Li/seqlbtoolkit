@@ -283,7 +283,8 @@ def split_overlength_bert_input_sequence(sequence: Union[str, List[str], List[Li
         split_bert_lens = [sum(seq_bert_len_list[split_points[i]:split_points[i+1]])
                            for i in range(len(split_points)-1)]
 
-    split_tks_seq_list = [tks_seq_list[split_points[i]:split_points[i+1]] for i in range(len(split_points)-1)]
+    split_tks_seq_list = [merge_list_of_lists(tks_seq_list[split_points[i]:split_points[i+1]])
+                          for i in range(len(split_points)-1)]
 
     return split_tks_seq_list
 
