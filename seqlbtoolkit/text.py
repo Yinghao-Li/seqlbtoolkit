@@ -266,7 +266,7 @@ def split_overlength_bert_input_sequence(sequence: Union[str, List[str], List[Li
     split_bert_lens = [sum(seq_bert_len_list[split_points[i]:split_points[i+1]])
                        for i in range(len(split_points)-1)]
 
-    while (np.asarray(split_bert_lens) >= max_seq_length).any():
+    while (np.asarray(split_bert_lens) > max_seq_length).any():
 
         new_split_points = list()
         for idx, bert_len in enumerate(split_bert_lens):
