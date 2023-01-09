@@ -46,7 +46,7 @@ def build_bert_token_embeddings(tk_seq_list: List[List[str]],
     # update input sentences so that every sentence has BERT length < 510
     logger.info(f'Checking lengths. Paragraphs longer than {max_seq_length} tokens will be separated.')
     for tk_seq in tk_seq_list:
-        tk_seqs, _, _ = split_overlength_bert_input_sequence(tk_seq, tokenizer, max_seq_length)
+        tk_seqs = split_overlength_bert_input_sequence(tk_seq, tokenizer, max_seq_length)
         n_splits = len(tk_seqs)
         split_tk_seq_list += tk_seqs
 

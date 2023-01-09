@@ -1,9 +1,13 @@
 import regex
+import itertools
+import operator
 
 import numpy as np
 
-from typing import List, Optional
+from typing import List, Optional, Union
 from nltk.tokenize import word_tokenize, sent_tokenize
+
+from .data import merge_list_of_lists
 
 
 def format_text(text, remove_ref: Optional[bool] = False, remove_emoj: Optional[bool] = False):
@@ -163,9 +167,9 @@ def substring_mapping(text: str, mapping_dict: dict):
     return text
 
 
-def split_overlength_bert_input_sequence(tks: List[str], tokenizer, max_seq_length: Optional[int] = 512):
+def split_overlength_bert_input_sequence_legacy(tks: List[str], tokenizer, max_seq_length: Optional[int] = 512):
     """
-    Break the sentences that exceeds the maximum BERT length
+    Break the sentences that exceeds the maximum BERT length (deprecated)
 
     Parameters
     ----------
@@ -217,6 +221,71 @@ def split_overlength_bert_input_sequence(tks: List[str], tokenizer, max_seq_leng
 
     else:
         return [tks], [len(tks)], np.array([0], dtype=int)
+
+
+def split_overlength_bert_input_sequence(sequence: Union[str, List[str], List[List[str]]],
+                                         tokenizer,
+                                         max_seq_length: Optional[int] = 512) -> List[List[str]]:
+    """
+    Break the sentences that exceeds the maximum BERT length
+
+    Parameters
+    ----------
+    sequence: The original text sequence, could be a string, a list tokens,
+        or a list of sentences split into tokens (list of lists of string, preferred).
+        If the input sequence is in the first two format, it will be split into sentences and tokens using
+        `nltk.sent_tokenizer` and `nltk.word_tokenizer`.
+    tokenizer: BERT tokenizer used to check input length shen encoded using BERT's vocabulary
+    max_seq_length: maximum BERT sequence length
+
+    Returns
+    -------
+    a list of token collections (list containing tokens from multiple sentences)
+    """
+
+    if isinstance(sequence, str):
+        tks_seq_list = [word_tokenize(sent) for sent in sent_tokenize(sequence)]
+    elif isinstance(sequence[0], str):
+        tks_seq_list = [word_tokenize(sent) for sent in sent_tokenize(' '.join(sequence))]
+    elif isinstance(sequence[0][0], str):
+        tks_seq_list = sequence
+    else:
+        raise TypeError("Input parameter `sequence` has Unknown type.")
+
+    tks = merge_list_of_lists(tks_seq_list)
+    if len(tokenizer.tokenize(' '.join(tks), add_special_tokens=True)) < max_seq_length:
+        return tks
+
+    seq_bert_len_list = [len(tokenizer.tokenize(' '.join(tks_seq), add_special_tokens=True))
+                         for tks_seq in tks_seq_list]
+
+    if (np.asarray(seq_bert_len_list) > max_seq_length).any():
+        raise ValueError("One or more sentences in the input sequence are longer than the designated maximum length.")
+
+    split_points = [0, len(tks_seq_list)]
+    split_bert_lens = [sum(seq_bert_len_list[split_points[i]:split_points[i+1]])
+                       for i in range(len(split_points)-1)]
+
+    while (np.asarray(split_bert_lens) >= max_seq_length).any():
+
+        new_split_points = list()
+        for idx, bert_len in enumerate(split_bert_lens):
+            if bert_len > max_seq_length:
+                seq_bert_len_sub_list = seq_bert_len_list[split_points[idx]:split_points[idx+1]]
+                seq_bert_len_sub_accu_list = list(itertools.accumulate(seq_bert_len_sub_list, operator.add))
+                # try to separate sentences as evenly as possible
+                split_offset = np.argmin((np.array(seq_bert_len_sub_accu_list) - bert_len / 2) ** 2)
+                new_split_points.append(split_offset + split_points[idx] + 1)
+
+        split_points += new_split_points
+        split_points.sort()
+
+        split_bert_lens = [sum(seq_bert_len_list[split_points[i]:split_points[i+1]])
+                           for i in range(len(split_points)-1)]
+
+    split_tks_seq_list = [tks_seq_list[split_points[i]:split_points[i+1]] for i in range(len(split_points)-1)]
+
+    return split_tks_seq_list
 
 
 def remove_invalid_parenthesis(sent: str) -> str:

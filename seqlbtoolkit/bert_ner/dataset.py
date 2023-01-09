@@ -11,7 +11,7 @@ from transformers import (
     BatchEncoding
 )
 
-from ..text import split_overlength_bert_input_sequence
+from ..text import split_overlength_bert_input_sequence_legacy
 from ..base_model.dataset import load_data_from_json, load_data_from_pt
 from ..base_model.config import BaseNERConfig
 
@@ -107,7 +107,7 @@ class BertNERBaseDataset(torch.utils.data.Dataset):
         mapping_ids = list()
         for text in self._text:
             # separate a sentence into several pieces if it exceeds the maximum length
-            st, st_lens, st_ids = split_overlength_bert_input_sequence(text, tokenizer, config.max_length)
+            st, st_lens, st_ids = split_overlength_bert_input_sequence_legacy(text, tokenizer, config.max_length)
             sp_text += st
 
             if not mapping_ids:
@@ -160,7 +160,7 @@ class BertNERBaseDataset(torch.utils.data.Dataset):
         mapping_ids = list()
         for text, lbs in zip(self._text, self._lbs):
             # break a sentence into several pieces if it exceeds the maximum length
-            st, st_lens, st_ids = split_overlength_bert_input_sequence(text, tokenizer, config.max_length)
+            st, st_lens, st_ids = split_overlength_bert_input_sequence_legacy(text, tokenizer, config.max_length)
             sp_text += st
 
             start_idx = 0

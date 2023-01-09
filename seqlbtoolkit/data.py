@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 try:
     from tokenizations import get_alignments
     from textspan import align_spans, get_original_spans
-except Exception as e:
+except ImportError as exp:
     logger.warning(f"Failed to import Python libs `pytokenizations` and/or `textspan`. "
                    f"This may break functions including `respan`, `txt_to_token_span`, `token_to_txt_span`, "
                    f"and `respan_text`.")
@@ -19,7 +19,7 @@ except Exception as e:
 
 def respan(src_tokens: List[str],
            tgt_tokens: List[str],
-           src_span: List[tuple]):
+           src_span: Union[List[tuple], Dict[Tuple[int, int], str]]):
     """
     transfer original spans to target spans
     :param src_tokens: source tokens
@@ -28,17 +28,35 @@ def respan(src_tokens: List[str],
     should be the start index and the second should be the end index
     :return: a list of transferred span tuples.
     """
+
     s2t, _ = get_alignments(src_tokens, tgt_tokens)
-    tgt_spans = list()
-    for spans in src_span:
-        start = s2t[spans[0]][0]
-        if spans[1] < len(s2t):
-            end = s2t[spans[1]][-1]
-        else:
-            end = s2t[-1][-1]
-        if end == start:
-            end += 1
-        tgt_spans.append((start, end))
+
+    if isinstance(src_span, list):
+        tgt_spans = list()
+        for span in src_span:
+            start = s2t[span[0]][0]
+            if span[1] < len(s2t):
+                end = s2t[span[1]][-1]
+            else:
+                end = s2t[-1][-1]
+            if end == start:
+                end += 1
+            tgt_spans.append((start, end))
+
+    elif isinstance(src_span, dict):
+        tgt_spans = dict()
+        for span, lb in src_span.items():
+            start = s2t[span[0]][0]
+            if span[1] < len(s2t):
+                end = s2t[span[1]][-1]
+            else:
+                end = s2t[-1][-1]
+            if end == start:
+                end += 1
+            tgt_spans[(start, end)] = lb
+
+    else:
+        raise TypeError("Undefined type for `src_span`")
 
     return tgt_spans
 
@@ -71,10 +89,12 @@ def txt_to_token_span(tokens: List[str],
     :return: a list of transferred span tuples.
     """
     token_indices = get_original_spans(tokens, text)
+
     try:
         token_indices = [item[0] for item in token_indices]
-    except IndexError as e:
-        logger.error(f"Encountered token(s) not in original text: {e}")
+    except IndexError as err:
+        logger.error(f"Encountered token(s) not in original text: {err}")
+
     if isinstance(txt_spans, list):
         tgt_spans = list()
         for txt_span in txt_spans:
@@ -91,6 +111,7 @@ def txt_to_token_span(tokens: List[str],
                     break
             assert (start is not None) and (end is not None), ValueError("input spans out of scope")
             tgt_spans.append((start, end))
+
     elif isinstance(txt_spans, dict):
         tgt_spans = dict()
         for txt_span, v in txt_spans.items():
