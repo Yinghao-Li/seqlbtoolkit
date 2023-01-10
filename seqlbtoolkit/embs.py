@@ -1,4 +1,6 @@
 import logging
+import itertools
+import operator
 import numpy as np
 from tqdm import tqdm
 from typing import List, Optional
@@ -15,6 +17,7 @@ def build_bert_token_embeddings(tk_seq_list: List[List[str]],
                                 model_or_name,
                                 tokenizer_or_name,
                                 max_seq_length: Optional[int] = 512,
+                                sent_lengths_list: Optional[List[List[int]]] = None,
                                 device: Optional = 'cpu',
                                 prepend_cls_embs: Optional[bool] = False) -> List[torch.Tensor]:
     """
@@ -26,6 +29,8 @@ def build_bert_token_embeddings(tk_seq_list: List[List[str]],
     model_or_name: a loaded Huggingface BERT model or its name
     tokenizer_or_name: a loaded Huggingface tokenizer or its name
     max_seq_length: maximum input sequence length that the BERT model allow
+    sent_lengths_list: The length of each sentence.
+        `tk_seq_list` will be split accordingly if this parameter is assigned.
     device: device
     prepend_cls_embs: whether add the embeddings corresponding the CLS token back at the beginning of each sequence
 
@@ -39,14 +44,25 @@ def build_bert_token_embeddings(tk_seq_list: List[List[str]],
     model = AutoModel.from_pretrained(model_or_name) if isinstance(model_or_name, str) else model_or_name
     model.to(device)
 
+    if sent_lengths_list is None:
+        sent_lengths_list = [None] * len(tk_seq_list)
+
     split_tk_seq_list = list()
     ori2split_ids_map = list()
     n = 0
 
     # update input sentences so that every sentence has BERT length < 510
     logger.info(f'Checking lengths. Paragraphs longer than {max_seq_length} tokens will be separated.')
-    for tk_seq in tk_seq_list:
-        tk_seqs = split_overlength_bert_input_sequence(tk_seq, tokenizer, max_seq_length)
+    for tk_seq, sent_lens in zip(tk_seq_list, sent_lengths_list):
+
+        if sent_lens:
+            ends = list(itertools.accumulate(sent_lens, operator.add))
+            starts = [0] + ends[:-1]
+            tk_seq_ = [tk_seq[s:e] for s, e in zip(starts, ends)]
+        else:
+            tk_seq_ = tk_seq
+
+        tk_seqs = split_overlength_bert_input_sequence(tk_seq_, tokenizer, max_seq_length)
         n_splits = len(tk_seqs)
         split_tk_seq_list += tk_seqs
 
@@ -63,11 +79,16 @@ def build_bert_token_embeddings(tk_seq_list: List[List[str]],
     for sep_ids in ori2split_ids_map:
         cat_emb = None
 
+        # TODO: The current scheme is using the cls embedding of the first sequence split
+        #  as the cls embedding of the aggregated sequence.
+        #  Consider changing this to average in the future
         for sep_idx in sep_ids:
             if cat_emb is None:
                 cat_emb = sent_emb_list[sep_idx]
-            else:
+            elif prepend_cls_embs:
                 cat_emb = torch.cat([cat_emb, sent_emb_list[sep_idx][1:]], dim=0)
+            else:
+                cat_emb = torch.cat([cat_emb, sent_emb_list[sep_idx]], dim=0)
 
         assert cat_emb is not None, ValueError('Empty embedding!')
         tk_emb_seq_list.append(cat_emb)

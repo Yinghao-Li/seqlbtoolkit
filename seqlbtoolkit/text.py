@@ -246,7 +246,7 @@ def split_overlength_bert_input_sequence(sequence: Union[str, List[str], List[Li
     if isinstance(sequence, str):
         tks_seq_list = [word_tokenize(sent) for sent in sent_tokenize(sequence)]
     elif isinstance(sequence[0], str):
-        tks_seq_list = [word_tokenize(sent) for sent in sent_tokenize(' '.join(sequence))]
+        tks_seq_list = [sent.split(' ') for sent in sent_tokenize(' '.join(sequence))]
     elif isinstance(sequence[0][0], str):
         tks_seq_list = sequence
     else:
@@ -254,7 +254,7 @@ def split_overlength_bert_input_sequence(sequence: Union[str, List[str], List[Li
 
     tks = merge_list_of_lists(tks_seq_list)
     if len(tokenizer.tokenize(' '.join(tks), add_special_tokens=True)) < max_seq_length:
-        return tks
+        return [tks]
 
     seq_bert_len_list = [len(tokenizer.tokenize(' '.join(tks_seq), add_special_tokens=True))
                          for tks_seq in tks_seq_list]
