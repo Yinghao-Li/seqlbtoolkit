@@ -1,14 +1,11 @@
 import logging
 import itertools
 import operator
+import torch
 import numpy as np
 from tqdm import tqdm
 from typing import List, Optional
 
-import torch
-from transformers import AutoTokenizer, AutoModel
-
-from .text import split_overlength_bert_input_sequence
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +35,8 @@ def build_bert_token_embeddings(tk_seq_list: List[List[str]],
     -------
     List[torch.Tensor]
     """
+    from transformers import AutoTokenizer, AutoModel
+    from .text import split_overlength_bert_input_sequence
 
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_or_name) if isinstance(tokenizer_or_name, str) \
         else tokenizer_or_name
@@ -103,11 +102,14 @@ def build_bert_token_embeddings(tk_seq_list: List[List[str]],
     return tk_emb_seq_list
 
 
-def build_emb_helper(tk_seq_list: List[List[str]],
-                     tokenizer,
-                     model,
-                     device: Optional = 'cpu',
-                     prepend_cls_embs: Optional[bool] = False):
+def build_emb_helper_legacy(tk_seq_list: List[List[str]],
+                            tokenizer,
+                            model,
+                            device: Optional = 'cpu',
+                            prepend_cls_embs: Optional[bool] = False):
+    """
+    Helper function for budding bert embeddings for tokenized sequences (deprecated)
+    """
 
     tk_emb_seq_list = list()
 
@@ -135,6 +137,67 @@ def build_emb_helper(tk_seq_list: List[List[str]],
 
         emb_list = list()
         for ids in ori2bert_tk_ids:
+            embeddings = trunc_hidden_states[ids, :]  # first dim could be 1 or n
+            emb_list.append(embeddings.mean(dim=0))
+
+        if prepend_cls_embs:
+            # add back the embedding of [CLS] as the sentence embedding
+            emb_list = [last_hidden_states[0, :]] + emb_list
+
+        bert_emb = torch.stack(emb_list)
+        assert not bert_emb.isnan().any(), ValueError('NaN Embeddings!')
+        tk_emb_seq_list.append(bert_emb.detach().cpu())
+
+    return tk_emb_seq_list
+
+
+def build_emb_helper(tk_seq_list: List[List[str]],
+                     tokenizer,
+                     model,
+                     device: Optional = 'cpu',
+                     prepend_cls_embs: Optional[bool] = False) -> List[torch.Tensor]:
+
+    """
+    Helper function for budding bert embeddings for tokenized sequences.
+
+    Parameters
+    ----------
+    tk_seq_list: a list (batch) or list (sequence) of tokens
+    tokenizer: loaded BERT tokenizer
+    model: loaded BERT model
+    device: which device to use for embedding construction
+    prepend_cls_embs: whether prepend the "CLS" token embeddings in frond of the sequence
+
+    Returns
+    -------
+    A list of torch tensor
+    """
+    from tokenizations import get_alignments
+
+    tk_emb_seq_list = list()
+
+    for tk_seq in tqdm(tk_seq_list):
+
+        # `substitute_unknown_tokens` should be called outside this function
+        # tk_seq = substitute_unknown_tokens(tk_seq, tokenizer)
+        tk_ids = tokenizer.encode(tk_seq, is_split_into_words=True)
+        tks = tokenizer.convert_ids_to_tokens(tk_ids)[1:-1]
+
+        ori2bert, _ = get_alignments(tk_seq, tks)
+
+        # calculate BERT last layer embeddings
+        with torch.no_grad():
+            # get the last hidden state from the BERT model
+            last_hidden_states = model(torch.tensor([tk_ids], device=device))[0].squeeze(0).to('cpu')
+            # remove the token embeddings regarding the [CLS] and [SEP]
+            trunc_hidden_states = last_hidden_states[1:-1, :]
+
+        emb_list = list()
+        for ids in ori2bert:
+            if not ids:
+                raise ValueError(f"One or more tokens do not have embeddings! One possible solution is"
+                                 f"using function `seqlbtoolkit.text.substitute_unknown_tokens` to format input tokens"
+                                 f"before calling this function. The tokens are {tk_seq}")
             embeddings = trunc_hidden_states[ids, :]  # first dim could be 1 or n
             emb_list.append(embeddings.mean(dim=0))
 

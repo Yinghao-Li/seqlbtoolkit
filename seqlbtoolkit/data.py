@@ -8,13 +8,8 @@ from typing import List, Dict, Tuple, Optional, Union
 
 logger = logging.getLogger(__name__)
 
-try:
-    from tokenizations import get_alignments
-    from textspan import align_spans, get_original_spans
-except ImportError as exp:
-    logger.warning(f"Failed to import Python libs `pytokenizations` and/or `textspan`. "
-                   f"This may break functions including `respan`, `txt_to_token_span`, `token_to_txt_span`, "
-                   f"and `respan_text`.")
+from tokenizations import get_alignments
+from textspan import align_spans, get_original_spans
 
 
 def respan(src_tokens: List[str],

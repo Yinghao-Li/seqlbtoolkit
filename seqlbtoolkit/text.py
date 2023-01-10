@@ -1,3 +1,4 @@
+import copy
 import regex
 import itertools
 import operator
@@ -5,7 +6,6 @@ import operator
 import numpy as np
 
 from typing import List, Optional, Union
-from nltk.tokenize import word_tokenize, sent_tokenize
 
 from .data import merge_list_of_lists
 
@@ -183,6 +183,7 @@ def split_overlength_bert_input_sequence_legacy(tks: List[str], tokenizer, max_s
     2. the lengths of the broken text
     3. a list of the indices of the separated text
     """
+    from nltk import word_tokenize, sent_tokenize
 
     # Deal with sentences that are longer than 512 BERT tokens
     if len(tokenizer.tokenize(' '.join(tks), add_special_tokens=True)) >= max_seq_length:
@@ -244,8 +245,10 @@ def split_overlength_bert_input_sequence(sequence: Union[str, List[str], List[Li
     """
 
     if isinstance(sequence, str):
+        from nltk import word_tokenize, sent_tokenize
         tks_seq_list = [word_tokenize(sent) for sent in sent_tokenize(sequence)]
     elif isinstance(sequence[0], str):
+        from nltk import sent_tokenize
         tks_seq_list = [sent.split(' ') for sent in sent_tokenize(' '.join(sequence))]
     elif isinstance(sequence[0][0], str):
         tks_seq_list = sequence
@@ -287,6 +290,33 @@ def split_overlength_bert_input_sequence(sequence: Union[str, List[str], List[Li
                           for i in range(len(split_points)-1)]
 
     return split_tks_seq_list
+
+
+def substitute_unknown_tokens(tk_seq: List[str], tokenizer, unk_tag: Optional[str] = '[UNK]') -> List[str]:
+    """
+    Substitute the tokens in tk_seq unknown to the tokenizer by `unk_tag`
+
+    Parameters
+    ----------
+    tk_seq: a list (sequence) of tokens
+    tokenizer: a loaded BERT tokenizer
+    unk_tag: the tag represents unknown tokens
+
+    Returns
+    -------
+    token sequences with unknown tokens substituted
+    """
+    from tokenizations import get_alignments
+
+    tks = copy.deepcopy(tk_seq)
+    bert_tks = tokenizer.tokenize(tks, is_split_into_words=True)
+    ori2bert, _ = get_alignments(tks, bert_tks)
+
+    for ori_idx, bert_tk_ids in enumerate(ori2bert):
+        if not bert_tk_ids:
+            tks[ori_idx] = unk_tag
+
+    return tks
 
 
 def remove_invalid_parenthesis(sent: str) -> str:
