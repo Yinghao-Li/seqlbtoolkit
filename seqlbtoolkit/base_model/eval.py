@@ -154,7 +154,8 @@ class Metric:
 def get_ner_metrics(true_lbs,
                     pred_lbs,
                     mode: Optional[str] = 'strict',
-                    scheme: Optional = IOB2):
+                    scheme: Optional = IOB2,
+                    detailed: Optional[bool] = False):
     """
     Get NER metrics including precision, recall and f1
 
@@ -163,13 +164,24 @@ def get_ner_metrics(true_lbs,
     true_lbs: true labels
     pred_lbs: predicted labels
     mode:
-    scheme: NER label scheme (IOB-2 as default, [O, B-, I-, B-] )
+    scheme: NER label scheme (IOB-2 as default, [O, B-, I-] )
+    detailed: Whether get detailed result report instead of micro-averaged one
 
     Returns
     -------
-    Metrics
+    Metrics if not detailed else Dict[str, Metrics]
     """
-    p = metrics.precision_score(true_lbs, pred_lbs, mode=mode, zero_division=0, scheme=scheme)
-    r = metrics.recall_score(true_lbs, pred_lbs, mode=mode, zero_division=0, scheme=scheme)
-    f = metrics.f1_score(true_lbs, pred_lbs, mode=mode, zero_division=0, scheme=scheme)
-    return Metric(p, r, f)
+    if not detailed:
+        p = metrics.precision_score(true_lbs, pred_lbs, mode=mode, zero_division=0, scheme=scheme)
+        r = metrics.recall_score(true_lbs, pred_lbs, mode=mode, zero_division=0, scheme=scheme)
+        f = metrics.f1_score(true_lbs, pred_lbs, mode=mode, zero_division=0, scheme=scheme)
+        return Metric(p, r, f)
+
+    else:
+        metric_dict = dict()
+        report = metrics.classification_report(
+            true_lbs, pred_lbs, output_dict=True, mode=mode, zero_division=0, scheme=scheme
+        )
+        for tp, results in report.items():
+            metric_dict[tp] = Metric(results['precision'], results['recall'], results['f1-score'])
+        return metric_dict
