@@ -1,6 +1,4 @@
 import logging
-import itertools
-import operator
 import torch
 import numpy as np
 from tqdm import tqdm
@@ -51,28 +49,21 @@ def build_bert_token_embeddings(tk_seq_list: List[List[str]],
     n = 0
 
     # update input sentences so that every sentence has BERT length < 510
-    logger.info(f'Checking lengths. Paragraphs longer than {max_seq_length} tokens will be separated.')
+    logger.debug(f'Checking lengths. Paragraphs longer than {max_seq_length} tokens will be separated.')
     for tk_seq, sent_lens in zip(tk_seq_list, sent_lengths_list):
 
-        if sent_lens:
-            ends = list(itertools.accumulate(sent_lens, operator.add))
-            starts = [0] + ends[:-1]
-            tk_seq_ = [tk_seq[s:e] for s, e in zip(starts, ends)]
-        else:
-            tk_seq_ = tk_seq
-
-        tk_seqs = split_overlength_bert_input_sequence(tk_seq_, tokenizer, max_seq_length)
+        tk_seqs = split_overlength_bert_input_sequence(tk_seq, tokenizer, max_seq_length, sent_lens)
         n_splits = len(tk_seqs)
         split_tk_seq_list += tk_seqs
 
         ori2split_ids_map.append(list(range(n, n + n_splits)))
         n += n_splits
 
-    logger.info('Building embeddings...')
+    logger.debug('Building embeddings...')
     sent_emb_list = build_emb_helper(split_tk_seq_list, tokenizer, model, device, prepend_cls_embs)
 
     # Combine embeddings so that the embedding lengths equal to the lengths of the original sentences
-    logger.info('Combining results...')
+    logger.debug('Combining results...')
     tk_emb_seq_list = list()
 
     for sep_ids in ori2split_ids_map:
@@ -173,6 +164,7 @@ def build_emb_helper(tk_seq_list: List[List[str]],
     A list of torch tensor
     """
     from tokenizations import get_alignments
+    model.eval()
 
     tk_emb_seq_list = list()
 

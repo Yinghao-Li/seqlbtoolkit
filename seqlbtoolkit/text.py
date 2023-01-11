@@ -224,9 +224,10 @@ def split_overlength_bert_input_sequence_legacy(tks: List[str], tokenizer, max_s
         return [tks], [len(tks)], np.array([0], dtype=int)
 
 
-def split_overlength_bert_input_sequence(sequence: Union[str, List[str], List[List[str]]],
+def split_overlength_bert_input_sequence(sequence: Union[str, List[str]],
                                          tokenizer,
-                                         max_seq_length: Optional[int] = 512) -> List[List[str]]:
+                                         max_seq_length: Optional[int] = 512,
+                                         sent_lens: Optional[List[int]] = None) -> List[List[str]]:
     """
     Break the sentences that exceeds the maximum BERT length
 
@@ -238,6 +239,7 @@ def split_overlength_bert_input_sequence(sequence: Union[str, List[str], List[Li
         `nltk.sent_tokenizer` and `nltk.word_tokenizer`.
     tokenizer: BERT tokenizer used to check input length shen encoded using BERT's vocabulary
     max_seq_length: maximum BERT sequence length
+    sent_lens: The length of each sentence.
 
     Returns
     -------
@@ -248,22 +250,30 @@ def split_overlength_bert_input_sequence(sequence: Union[str, List[str], List[Li
         from nltk import word_tokenize, sent_tokenize
         tks_seq_list = [word_tokenize(sent) for sent in sent_tokenize(sequence)]
     elif isinstance(sequence[0], str):
-        from nltk import sent_tokenize
-        tks_seq_list = [sent.split(' ') for sent in sent_tokenize(' '.join(sequence))]
-    elif isinstance(sequence[0][0], str):
-        tks_seq_list = sequence
+        if sent_lens:
+            ends = list(itertools.accumulate(sent_lens, operator.add))
+            starts = [0] + ends[:-1]
+            tks_seq_list = [sequence[s:e] for s, e in zip(starts, ends)]
+        else:
+            from nltk import sent_tokenize
+            tks_seq_list = [sent.split(' ') for sent in sent_tokenize(' '.join(sequence))]
     else:
         raise TypeError("Input parameter `sequence` has Unknown type.")
 
     tks = merge_list_of_lists(tks_seq_list)
     if len(tokenizer.tokenize(' '.join(tks), add_special_tokens=True)) < max_seq_length:
-        return [tks]
+        return [sequence]
+
+    if isinstance(sequence, list):
+        assert len(tks) == len(sequence), "Sentence tokenization changed the original tokens! " \
+                                          "Consider assigning values to `sent_lens` to disable " \
+                                          "automatic sentence tokenization!"
 
     seq_bert_len_list = [len(tokenizer.tokenize(' '.join(tks_seq), add_special_tokens=True))
                          for tks_seq in tks_seq_list]
 
-    if (np.asarray(seq_bert_len_list) > max_seq_length).any():
-        raise ValueError("One or more sentences in the input sequence are longer than the designated maximum length.")
+    assert (np.asarray(seq_bert_len_list) <= max_seq_length).all(), \
+        ValueError("One or more sentences in the input sequence are longer than the designated maximum length.")
 
     split_points = [0, len(tks_seq_list)]
     split_bert_lens = [sum(seq_bert_len_list[split_points[i]:split_points[i+1]])
