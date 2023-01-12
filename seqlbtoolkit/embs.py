@@ -36,8 +36,8 @@ def build_bert_token_embeddings(tk_seq_list: List[List[str]],
     from transformers import AutoTokenizer, AutoModel
     from .text import split_overlength_bert_input_sequence
 
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_or_name) if isinstance(tokenizer_or_name, str) \
-        else tokenizer_or_name
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_or_name, add_prefix_space=True) \
+        if isinstance(tokenizer_or_name, str) else tokenizer_or_name
     model = AutoModel.from_pretrained(model_or_name) if isinstance(model_or_name, str) else model_or_name
     model.to(device)
 

@@ -261,7 +261,7 @@ def split_overlength_bert_input_sequence(sequence: Union[str, List[str]],
         raise TypeError("Input parameter `sequence` has Unknown type.")
 
     tks = merge_list_of_lists(tks_seq_list)
-    if len(tokenizer.tokenize(' '.join(tks), add_special_tokens=True)) < max_seq_length:
+    if len(tokenizer.tokenize(tks, add_special_tokens=True, is_split_into_words=True)) <= max_seq_length:
         return [sequence]
 
     if isinstance(sequence, list):
@@ -269,7 +269,7 @@ def split_overlength_bert_input_sequence(sequence: Union[str, List[str]],
                                           "Consider assigning values to `sent_lens` to disable " \
                                           "automatic sentence tokenization!"
 
-    seq_bert_len_list = [len(tokenizer.tokenize(' '.join(tks_seq), add_special_tokens=True))
+    seq_bert_len_list = [len(tokenizer.tokenize(tks_seq, add_special_tokens=True, is_split_into_words=True))
                          for tks_seq in tks_seq_list]
 
     assert (np.asarray(seq_bert_len_list) <= max_seq_length).all(), \
