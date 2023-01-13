@@ -276,15 +276,15 @@ def split_overlength_bert_input_sequence(sequence: Union[str, List[str]],
         ValueError("One or more sentences in the input sequence are longer than the designated maximum length.")
 
     split_points = [0, len(tks_seq_list)]
-    split_bert_lens = [sum(seq_bert_len_list[split_points[i]:split_points[i+1]])
-                       for i in range(len(split_points)-1)]
+    split_bert_lens = [sum(seq_bert_len_list[split_points[i]:split_points[i + 1]])
+                       for i in range(len(split_points) - 1)]
 
     while (np.asarray(split_bert_lens) > max_seq_length).any():
 
         new_split_points = list()
         for idx, bert_len in enumerate(split_bert_lens):
             if bert_len > max_seq_length:
-                seq_bert_len_sub_list = seq_bert_len_list[split_points[idx]:split_points[idx+1]]
+                seq_bert_len_sub_list = seq_bert_len_list[split_points[idx]:split_points[idx + 1]]
                 seq_bert_len_sub_accu_list = list(itertools.accumulate(seq_bert_len_sub_list, operator.add))
                 # try to separate sentences as evenly as possible
                 split_offset = np.argmin((np.array(seq_bert_len_sub_accu_list) - bert_len / 2) ** 2)
@@ -293,16 +293,17 @@ def split_overlength_bert_input_sequence(sequence: Union[str, List[str]],
         split_points += new_split_points
         split_points.sort()
 
-        split_bert_lens = [sum(seq_bert_len_list[split_points[i]:split_points[i+1]])
-                           for i in range(len(split_points)-1)]
+        split_bert_lens = [sum(seq_bert_len_list[split_points[i]:split_points[i + 1]])
+                           for i in range(len(split_points) - 1)]
 
-    split_tks_seq_list = [merge_list_of_lists(tks_seq_list[split_points[i]:split_points[i+1]])
-                          for i in range(len(split_points)-1)]
+    split_tks_seq_list = [merge_list_of_lists(tks_seq_list[split_points[i]:split_points[i + 1]])
+                          for i in range(len(split_points) - 1)]
 
     return split_tks_seq_list
 
 
-def substitute_unknown_tokens(tk_seq: List[str], tokenizer, unk_tag: Optional[str] = '[UNK]') -> List[str]:
+# noinspection PyTypeChecker,PyComparisonWithNone
+def substitute_unknown_tokens(tk_seq: List[str], tokenizer) -> List[str]:
     """
     Substitute the tokens in tk_seq unknown to the tokenizer by `unk_tag`
 
@@ -310,23 +311,25 @@ def substitute_unknown_tokens(tk_seq: List[str], tokenizer, unk_tag: Optional[st
     ----------
     tk_seq: a list (sequence) of tokens
     tokenizer: a loaded BERT tokenizer
-    unk_tag: the tag represents unknown tokens
 
     Returns
     -------
     token sequences with unknown tokens substituted
     """
-    from tokenizations import get_alignments
 
-    tks = copy.deepcopy(tk_seq)
-    bert_tks = tokenizer.tokenize(tks, is_split_into_words=True)
-    ori2bert, _ = get_alignments(tks, bert_tks)
+    tks = np.asarray(copy.deepcopy(tk_seq))
 
-    for ori_idx, bert_tk_ids in enumerate(ori2bert):
-        if not bert_tk_ids:
-            tks[ori_idx] = unk_tag
+    word_ids = tokenizer(tk_seq, is_split_into_words=True).word_ids(batch_index=0)
+    ori_tk_ids = np.arange(len(tk_seq))
 
-    return tks
+    word_ids_shifted_left = np.asarray([-100] + word_ids[:-1])
+    word_ids = np.asarray(word_ids)
+
+    is_first_wordpiece = (word_ids_shifted_left != word_ids) & (word_ids != None)
+    word_ids[~is_first_wordpiece] = -100  # could be anything less than 0
+
+    tks[np.setdiff1d(ori_tk_ids, word_ids)] = tokenizer.unk_token
+    return tks.tolist()
 
 
 def remove_invalid_parenthesis(sent: str) -> str:

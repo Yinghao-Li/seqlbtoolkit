@@ -8,9 +8,6 @@ from typing import List, Dict, Tuple, Optional, Union
 
 logger = logging.getLogger(__name__)
 
-from tokenizations import get_alignments
-from textspan import align_spans, get_original_spans
-
 
 def respan(src_tokens: List[str],
            tgt_tokens: List[str],
@@ -24,6 +21,7 @@ def respan(src_tokens: List[str],
     :return: a list of transferred span tuples.
     """
 
+    from tokenizations import get_alignments
     s2t, _ = get_alignments(src_tokens, tgt_tokens)
 
     if isinstance(src_span, list):
@@ -67,6 +65,7 @@ def respan_text(src_txt: str,
     should be the start index and the second should be the end index
     :return: a list of transferred span tuples.
     """
+    from textspan import align_spans
     tgt_spans = align_spans(src_span, src_txt, tgt_txt)
     tgt_spans = [s[0] for s in tgt_spans]
 
@@ -83,6 +82,7 @@ def txt_to_token_span(tokens: List[str],
     :param txt_spans: text spans tuples: (start, end, ...)
     :return: a list of transferred span tuples.
     """
+    from textspan import get_original_spans
     token_indices = get_original_spans(tokens, text)
 
     try:
@@ -140,6 +140,7 @@ def token_to_txt_span(tokens: List[str],
     :param token_spans: text spans tuples: (start, end, ...)
     :return: a list of transferred span tuples.
     """
+    from textspan import get_original_spans
     token_indices = get_original_spans(tokens, text)
     try:
         token_indices = [item[0] for item in token_indices]

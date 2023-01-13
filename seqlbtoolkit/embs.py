@@ -175,6 +175,8 @@ def build_emb_helper(tk_seq_list: List[List[str]],
         tk_ids = tokenizer.encode(tk_seq, is_split_into_words=True)
         tks = tokenizer.convert_ids_to_tokens(tk_ids)[1:-1]
 
+        # TODO: using get_alignments may cause trouble while dealing with roberta and other models
+        #  consider changing this according to ./text/substitute_unknown_tokens
         ori2bert, _ = get_alignments(tk_seq, tks)
 
         # calculate BERT last layer embeddings
