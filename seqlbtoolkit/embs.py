@@ -142,6 +142,7 @@ def build_emb_helper_legacy(tk_seq_list: List[List[str]],
     return tk_emb_seq_list
 
 
+# noinspection PyComparisonWithNone
 def build_emb_helper(tk_seq_list: List[List[str]],
                      tokenizer,
                      model,
@@ -172,26 +173,37 @@ def build_emb_helper(tk_seq_list: List[List[str]],
 
         # `substitute_unknown_tokens` should be called outside this function
         # tk_seq = substitute_unknown_tokens(tk_seq, tokenizer)
-        tk_ids = tokenizer.encode(tk_seq, is_split_into_words=True)
-        tks = tokenizer.convert_ids_to_tokens(tk_ids)[1:-1]
+        tokenized_text = tokenizer(tk_seq, is_split_into_words=True)
+        word_ids = tokenizer(tk_seq, is_split_into_words=True).word_ids(batch_index=0)
 
-        # TODO: using get_alignments may cause trouble while dealing with roberta and other models
-        #  consider changing this according to ./text/substitute_unknown_tokens
-        ori2bert, _ = get_alignments(tk_seq, tks)
+        word_ids_shifted_left = np.asarray([-100] + word_ids[:-1])
+        word_ids = np.asarray(word_ids)
+
+        is_first_wordpiece = (word_ids_shifted_left != word_ids) & (word_ids != None)
+        word_ids[~is_first_wordpiece] = -100  # could be anything less than 0
+
+        # this should not happen
+        if np.setdiff1d(np.arange(len(tk_seq)), word_ids).size > 0:
+            raise ValueError("Failed to map all tokens to BERT tokens! "
+                             "Consider running `substitute_unknown_tokens` before calling this function")
+
+        ori2bert = list()
+        for idx, word_idx in enumerate(word_ids[1: -1]):  # skip the special tokens
+
+            if word_idx != -100:
+                ori2bert.append([idx])
+            else:
+                ori2bert[-1].append(idx)
 
         # calculate BERT last layer embeddings
         with torch.no_grad():
             # get the last hidden state from the BERT model
-            last_hidden_states = model(torch.tensor([tk_ids], device=device))[0].squeeze(0).to('cpu')
+            last_hidden_states = model(torch.tensor([tokenized_text.input_ids], device=device))[0].squeeze(0).to('cpu')
             # remove the token embeddings regarding the [CLS] and [SEP]
             trunc_hidden_states = last_hidden_states[1:-1, :]
 
         emb_list = list()
         for ids in ori2bert:
-            if not ids:
-                raise ValueError(f"One or more tokens do not have embeddings! One possible solution is"
-                                 f"using function `seqlbtoolkit.text.substitute_unknown_tokens` to format input tokens"
-                                 f"before calling this function. The tokens are {tk_seq}")
             embeddings = trunc_hidden_states[ids, :]  # first dim could be 1 or n
             emb_list.append(embeddings.mean(dim=0))
 
