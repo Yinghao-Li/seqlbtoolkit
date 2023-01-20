@@ -40,7 +40,7 @@ def set_logging(log_dir: Optional[str] = None):
 
     Returns
     -------
-
+    None
     """
     if log_dir and log_dir != 'null':
         log_dir = os.path.abspath(log_dir)
@@ -68,6 +68,8 @@ def set_logging(log_dir: Optional[str] = None):
                 TqdmLoggingHandler()
             ],
         )
+    
+    return None
 
 
 def logging_args(args):
@@ -88,6 +90,8 @@ def logging_args(args):
     logger.info(f"Parameters: ({type(args)})")
     for arg_element, value in arg_elements.items():
         logger.info(f"  {arg_element}: {value}")
+    
+    return None
 
 
 def remove_dir(directory: str):

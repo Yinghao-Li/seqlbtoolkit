@@ -1,3 +1,4 @@
+import operator
 import torch
 import copy
 import logging
@@ -361,6 +362,27 @@ def entity_to_bio_labels(entities: List[str]):
 def merge_list_of_lists(lists: List[list]):
     merged = list(itertools.chain.from_iterable(lists))
     return merged
+
+
+def split_list_by_lengths(input_list: list, lengths: List[int]) -> List[list]:
+    """
+    Split a list into several lists given the lengths of each target list
+
+    Parameters
+    ----------
+    input_list: the list to split
+    lengths: the length of each target list
+
+    Returns
+    -------
+    a list of split lists
+    """
+    ends = list(itertools.accumulate(lengths, operator.add))
+    assert ends[-1] <= len(input_list), ValueError("The lengths does not match the input list!")
+
+    starts = [0] + ends[:-1]
+    output = [input_list[s:e] for s, e in zip(starts, ends)]
+    return output
 
 
 def sort_tuples_by_element_idx(tups: List[tuple],
