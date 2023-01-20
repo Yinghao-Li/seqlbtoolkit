@@ -23,3 +23,4 @@ pip install SeqLbToolkit-latest-py3-none-any.whl
 
 ## 2. Documentation
 
+Please refer to [wiki](https://github.com/Yinghao-Li/seqlbtoolkit/wiki) for documentation.
