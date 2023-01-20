@@ -23,15 +23,3 @@ pip install SeqLbToolkit-latest-py3-none-any.whl
 
 ## 2. Documentation
 
-### 2.1. IO
-This module defines frequently-used IO control functions.
-```python
-from seqlbtoolkit.io import (set_logging, save_json)
-
-# setup logging informatoin format as
-# "%(asctime)s - %(levelname)s - %(name)s -   %(message)s"; For example:
-# "01/06/2023 17:28:31 - INFO - seqlbtoolkit.io - <logging information>"
-set_logging(your_logging_dir)
-
-
-```
