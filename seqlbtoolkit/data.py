@@ -15,10 +15,12 @@ def respan(src_tokens: List[str],
            src_span: Union[List[tuple], Dict[Tuple[int, int], str]]):
     """
     transfer original spans to target spans
+
     :param src_tokens: source tokens
     :param tgt_tokens: target tokens
     :param src_span: a list of span tuples. The first element in the tuple
     should be the start index and the second should be the end index
+
     :return: a list of transferred span tuples.
     """
 

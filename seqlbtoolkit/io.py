@@ -129,8 +129,9 @@ def save_json(obj, path: str, collapse_level: Optional[int] = None):
     -------
     None
     """
-    file_dir = os.path.split(path)[0]
-    os.makedirs(file_dir, exist_ok=True)
+    file_dir = os.path.dirname(os.path.normpath(path))
+    if file_dir:
+        os.makedirs(file_dir, exist_ok=True)
 
     json_obj = json.dumps(obj, indent=2, ensure_ascii=False)
     if collapse_level:
