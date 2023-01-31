@@ -59,25 +59,39 @@ def respan(src_tokens: List[str],
 
 def respan_text(src_txt: str,
                 tgt_txt: str,
-                src_span: List[tuple]):
+                src_span: Union[List[tuple], Dict[Tuple[int, int], str]]):
     """
     transfer original spans to target spans
+
     :param src_txt: source txt
     :param tgt_txt: target txt
     :param src_span: a list of span tuples. The first element in the tuple
     should be the start index and the second should be the end index
+
     :return: a list of transferred span tuples.
     """
     from textspan import align_spans
-    tgt_spans = align_spans(src_span, src_txt, tgt_txt)
-    tgt_spans = [s[0] for s in tgt_spans]
+
+    if isinstance(src_span, list):
+        tgt_spans = align_spans(src_span, src_txt, tgt_txt)
+        tgt_spans = [s[0] for s in tgt_spans]
+    
+    elif isinstance(src_span, dict):
+        spans = list(src_span.keys())
+        ent_types = list(src_span.values())
+
+        tgt_spans = align_spans(spans, src_txt, tgt_txt)
+        tgt_spans = {s[0]: ent for s, ent in zip(tgt_spans, ent_types)}
+
+    else:
+        raise TypeError("Undefined type for `src_span`")
 
     return tgt_spans
 
 
 def txt_to_token_span(tokens: List[str],
                       text: str,
-                      txt_spans):
+                      txt_spans: Union[List[tuple], Dict[Tuple[int, int], str]]):
     """
     Transfer text-domain spans to token-domain spans
     :param tokens: tokens
