@@ -33,7 +33,7 @@ class BaseDataset(torch.utils.data.Dataset):
         self.data_instances = None
 
     def __len__(self):
-        return self.data_instances if self.data_instances else 0
+        return len(self.data_instances) if self.data_instances else 0
 
     def __getitem__(self, idx):
         return self.data_instances[idx]
