@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 from .config import CHMMBaseConfig
 from ..data import entity_to_bio_labels, one_hot, probs_to_lbs
 from ..embs import build_bert_token_embeddings
-from ..base_model.dataset import load_data_from_json, load_data_from_pt
+from ..training.dataset import load_data_from_json, load_data_from_pt
 
 logger = logging.getLogger(__name__)
 
@@ -239,7 +239,7 @@ class CHMMBaseDataset(torch.utils.data.Dataset):
         else:
             has_config_input = True
 
-        bert_model = getattr(config, "bert_model_name_or_path", 'bert-base_model-uncased')
+        bert_model = getattr(config, "bert_model_name_or_path", 'bert-base-uncased')
         device = getattr(config, "device", torch.device('cpu'))
 
         file_path = os.path.normpath(file_path)

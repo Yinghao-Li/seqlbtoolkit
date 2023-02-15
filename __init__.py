@@ -8,7 +8,7 @@ from .seqlbtoolkit import (
     utils,
 )
 
-from .seqlbtoolkit import base_model
+from .seqlbtoolkit import training
 from .seqlbtoolkit import bert_ner
 from .seqlbtoolkit import chmm
 

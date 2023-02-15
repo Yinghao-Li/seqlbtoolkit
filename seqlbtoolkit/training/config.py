@@ -10,8 +10,35 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BaseConfig:
     """
-    model & trainer base_model configuration
+    model & trainer configuration
     """
+
+    def get_meta(self,
+                 meta_dir: Optional[str] = None,
+                 meta_file_name: Optional[str] = 'meta.json'):
+
+        if meta_dir is not None:
+            meta_dir = meta_dir
+        elif 'data_dir' in dir(self):
+            meta_dir = getattr(self, 'data_dir')
+        else:
+            raise ValueError("To automatically load meta file, please either specify "
+                             "the `meta_dir` argument or define a `data_dir` class attribute.")
+
+        meta_dir = os.path.join(meta_dir, meta_file_name)
+        with open(meta_dir, 'r', encoding='utf-8') as f:
+            meta_dict = json.load(f)
+
+        invalid_keys = list()
+        for k, v in meta_dict.items():
+            if k in dir(self):
+                setattr(self, k, v)
+            else:
+                invalid_keys.append(k)
+
+        logger.warning(f"The following attributes in the meta file are not defined in config: {invalid_keys}")
+
+        return self
 
     def from_args(self, args):
         """

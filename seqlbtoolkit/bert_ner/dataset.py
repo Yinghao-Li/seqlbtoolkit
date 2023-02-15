@@ -12,8 +12,8 @@ from transformers import (
 )
 
 from ..text import split_overlength_bert_input_sequence_legacy
-from ..base_model.dataset import load_data_from_json, load_data_from_pt
-from ..base_model.config import BaseNERConfig
+from ..training.dataset import load_data_from_json, load_data_from_pt
+from ..training.config import BaseNERConfig
 
 logger = logging.getLogger(__name__)
 
