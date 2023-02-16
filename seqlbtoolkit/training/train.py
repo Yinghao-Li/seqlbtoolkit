@@ -6,9 +6,7 @@ from typing import Optional, List, Any, Dict
 import torch
 from torch.utils.data import DataLoader
 
-import matplotlib.pyplot as plt
-
-from .model_output import ModelOutput
+from .output import ModelOutput
 
 logger = logging.getLogger(__name__)
 
@@ -283,6 +281,9 @@ class BaseTrainer:
         return self
 
     def save_fig(self, fig, epoch: Optional[int] = None, directory="Plots"):
+
+        import matplotlib.pyplot as plt
+
         save_dir = os.path.join(self._config.output_dir, directory)
         os.makedirs(save_dir, exist_ok=True)
 
@@ -293,6 +294,8 @@ class BaseTrainer:
 
     @staticmethod
     def log_tensorboard_fig(tensorboard_writer, fig, epoch: Optional[int] = 0, directory="Plots"):
+        import matplotlib.pyplot as plt
+
         # Draw figure on canvas
         fig.canvas.draw()
 

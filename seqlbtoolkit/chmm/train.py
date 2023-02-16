@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 
 from .dataset import CHMMBaseDataset
 from .dataset import collate_fn as default_collate_fn
-from ..base_model.eval import Metric
+from ..training.eval import Metric
 
 logger = logging.getLogger(__name__)
 

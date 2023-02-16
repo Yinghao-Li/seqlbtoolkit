@@ -2,7 +2,7 @@ import logging
 from typing import Optional, List
 from dataclasses import dataclass
 
-from ..base_model.config import BaseNERConfig
+from ..training.config import BaseNERConfig
 
 logger = logging.getLogger(__name__)
 

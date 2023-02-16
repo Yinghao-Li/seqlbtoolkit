@@ -1,6 +1,6 @@
 import json
 import wandb
-from seqlbtoolkit.base_model.eval import get_ner_metrics
+from seqlbtoolkit.training.eval import get_ner_metrics
 
 y_true = [['O', 'O', 'O', 'B-MISC', 'I-MISC', 'I-MISC', 'O'], ['B-PER', 'I-PER', 'O']]
 y_pred = [['O', 'O', 'B-MISC', 'I-MISC', 'I-MISC', 'I-MISC', 'O'], ['B-PER', 'I-PER', 'O']]

@@ -15,12 +15,6 @@ This repo realizes Sequence Labeling Toolkits, a toolkit box containing useful f
 pip install -U SeqLbLoolkit
 ```
 
-- Install from wheel:
-```bash
-wget https://github.com/Yinghao-Li/seqlbtoolkit/releases/download/latest/SeqLbToolkit-latest-py3-none-any.whl
-pip install SeqLbToolkit-latest-py3-none-any.whl
-```
-
 ## 2. Documentation
 
 Please refer to [wiki](https://github.com/Yinghao-Li/seqlbtoolkit/wiki) for documentation.
