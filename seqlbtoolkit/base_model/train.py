@@ -63,13 +63,15 @@ class BaseTrainer:
                  training_dataset=None,
                  valid_dataset=None,
                  test_dataset=None,
-                 collate_fn=default_collate_fn):
+                 collate_fn=default_collate_fn,
+                 loss_fn=None):
 
         self._config = config
         self._training_dataset = training_dataset
         self._valid_dataset = valid_dataset
         self._test_dataset = test_dataset
         self._collate_fn = collate_fn
+        self._loss_fn = loss_fn
         self._model = None
         self._optimizer = None
         self._scheduler = None
@@ -81,7 +83,6 @@ class BaseTrainer:
 
     @config.setter
     def config(self, x):
-        logger.warning("Updating DirCHMMTrainer.config")
         self._config = x
 
     @property
@@ -92,18 +93,23 @@ class BaseTrainer:
         self.initialize_model()
         self.initialize_optimizer()
         self.initialize_scheduler()
+        self.initialize_loss()
         return self
 
     def initialize_model(self):
-        logger.warning("Model is not defined by initialization function!")
+        logger.debug("Model is not initialized!")
         return self
 
     def initialize_optimizer(self):
-        logger.warning("Optimizer is not defined by initialization function!")
+        logger.debug("Optimizer is not initialized!")
         return self
 
     def initialize_scheduler(self):
-        logger.warning("Scheduler is not defined by initialization function!")
+        logger.debug("Scheduler is not initialized!")
+        return self
+
+    def initialize_loss(self):
+        logger.debug("Loss function is not initialized!")
         return self
 
     def get_dataloader(self,
