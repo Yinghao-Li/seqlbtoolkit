@@ -148,13 +148,8 @@ class ModelBuffer:
         return self
 
 
-@dataclass
 class Status:
-    eval_step: int = 0
-    model_buffer: ModelBuffer = ModelBuffer()
 
-    def reset(self, size=1, smaller_is_better=False) -> "Status":
+    def __init__(self, buffer_size=1, metric_smaller_is_better=False):
         self.eval_step: int = 0
-        self.model_buffer: ModelBuffer = ModelBuffer(size, smaller_is_better)
-
-        return self
+        self.model_buffer: ModelBuffer = ModelBuffer(buffer_size, metric_smaller_is_better)
