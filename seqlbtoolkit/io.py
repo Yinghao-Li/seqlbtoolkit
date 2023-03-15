@@ -1,5 +1,3 @@
-from lib2to3.pgen2.token import OP
-from optparse import Option
 import os
 import re
 import tqdm
@@ -104,13 +102,14 @@ def remove_dir(directory: str):
     return None
 
 
-def init_dir(directory: str):
+def init_dir(directory: str, clear_original_content: Optional[bool] = True):
     """
     Create the target directory. If the directory exists, remove all subtree folders/files in it.
     """
 
-    remove_dir(directory)
-    os.makedirs(os.path.normpath(directory))
+    if clear_original_content:
+        remove_dir(directory)
+    os.makedirs(os.path.normpath(directory), exist_ok=True)
     return None
 
 
