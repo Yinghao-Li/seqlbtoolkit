@@ -1,16 +1,16 @@
+
 import os
 import regex
 import json
 import logging
-from typing import Optional, List
+from typing import Optional
 from string import printable
-from dataclasses import dataclass
 
 import torch
 import numpy as np
 
-from .config import BaseNERConfig
-from ..data import (
+from seqlbtoolkit.training.config import BaseNERConfig
+from seqlbtoolkit.data import (
     span_to_label,
     span_list_to_dict,
     entity_to_bio_labels,
@@ -18,131 +18,6 @@ from ..data import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class DataInstance:
-    def __setitem__(self, k, v):
-        self.__dict__.update(zip(k, v) if type(k) is tuple else [(k, v)])
-
-
-class BaseDataset(torch.utils.data.Dataset):
-    def __init__(self):
-        super().__init__()
-        # Whether the text and lbs sequences are separated according to maximum BERT input lengths
-        self.data_instances = None
-
-    def __len__(self):
-        return len(self.data_instances) if self.data_instances else 0
-
-    def __getitem__(self, idx):
-        return self.data_instances[idx]
-
-    def prepare(self, config, partition: str):
-        """
-        Load data from disk
-        Parameters
-        ----------
-        config: configurations
-        partition: dataset partition; in [train, valid, test]
-        Returns
-        -------
-        self (MultiSrcNERDataset)
-        """
-        raise NotImplementedError
-
-    def prepare_debug(self, n_inst: Optional[int] = 100):
-        for attr in self.__dict__.keys():
-            if regex.match(f"^_[a-z]", attr):
-                try:
-                    setattr(self, attr, getattr(self, attr)[:n_inst])
-                except TypeError:
-                    pass
-
-        return self
-
-    def save(self, file_path: str):
-        """
-        Save the entire dataset for future usage
-        Parameters
-        ----------
-        file_path: path to the saved file
-        Returns
-        -------
-        self
-        """
-        attr_dict = dict()
-        for attr, value in self.__dict__.items():
-            if regex.match(f"^_[a-z]", attr):
-                attr_dict[attr] = value
-
-        os.makedirs(os.path.dirname(os.path.normpath(file_path)), exist_ok=True)
-        torch.save(attr_dict, file_path)
-
-        return self
-
-    def load(self, file_path: str):
-        """
-        Load the entire dataset from disk
-        Parameters
-        ----------
-        file_path: path to the saved file
-        Returns
-        -------
-        self
-        """
-        attr_dict = torch.load(file_path)
-
-        for attr, value in attr_dict.items():
-            if attr not in self.__dict__:
-                logger.warning(f"Attribute {attr} is not natively defined in dataset!")
-
-            setattr(self, attr, value)
-
-        return self
-
-
-def feature_lists_to_instance_list(instance_class, **kwargs):
-    data_points = list()
-    keys = tuple(kwargs.keys())
-
-    for feature_point_list in zip(*tuple(kwargs.values())):
-        inst = instance_class()
-        inst[keys] = feature_point_list
-        data_points.append(inst)
-
-    return data_points
-
-
-def instance_list_to_feature_lists(instance_list: list, feature_names: Optional[List[str]] = None):
-    if not feature_names:
-        feature_names = list(instance_list[0].__dict__.keys())
-
-    features_lists = list()
-    for name in feature_names:
-        features_lists.append([getattr(inst, name) for inst in instance_list])
-
-    return features_lists
-
-
-class Batch:
-    def __init__(self, **kwargs):
-        super().__init__()
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-
-    def to(self, device):
-        for k, v in self.__dict__.items():
-            try:
-                setattr(self, k, v.to(device))
-            except AttributeError:
-                pass
-        return self
-
-    def __len__(self):
-        for v in list(self.__dict__.values()):
-            if isinstance(v, torch.Tensor):
-                return v.shape[0]
 
 
 def load_data_from_json(file_dir: str, config: Optional[BaseNERConfig] = None):

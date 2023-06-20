@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name='SeqLbToolkit',
-    version='0.3.4',
+    version='0.3.5',
     author='Yinghao Li',
     author_email='yinghaoli@gatech.edu',
     license='MIT',
@@ -25,5 +25,5 @@ setup(
         'Topic :: Text Processing :: Linguistic',
     ],
     packages=find_packages(),
-    python_requires=">=3.6",
+    python_requires=">=3.9",
 )

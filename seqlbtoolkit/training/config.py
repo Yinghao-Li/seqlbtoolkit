@@ -150,7 +150,7 @@ class BaseConfig:
 
 
 @dataclass
-class BaseNERConfig(BaseConfig):
+class NERConfig(BaseConfig):
 
     entity_types: Optional[List[str]] = None
     bio_label_types: Optional[List[str]] = None

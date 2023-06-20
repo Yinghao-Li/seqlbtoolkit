@@ -150,7 +150,6 @@ class Metric:
         return attr
 
 
-# noinspection PyTypeChecker
 def get_ner_metrics(true_lbs,
                     pred_lbs,
                     mode: Optional[str] = 'strict',
