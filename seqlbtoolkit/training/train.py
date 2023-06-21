@@ -139,10 +139,10 @@ class BaseTrainer:
     def __call__(self, *args, **kwargs):
         return self.run(*args, **kwargs)
 
-    def training_step(self, dataloader):
+    def training_step(self, dataloader, *args, **kwargs):
         raise NotImplementedError
 
-    def predict(self, dataset):
+    def predict(self, dataset, *args, **kwargs):
         """
         Predict labels/values given input dataset
 
