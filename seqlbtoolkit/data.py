@@ -6,13 +6,12 @@ import itertools
 import numpy as np
 
 from typing import List, Dict, Tuple, Optional, Union
+from .tokenizations import get_alignments, align_spans, get_original_spans
 
 logger = logging.getLogger(__name__)
 
 
-def respan(src_tokens: List[str],
-           tgt_tokens: List[str],
-           src_span: Union[List[tuple], Dict[Tuple[int, int], str]]):
+def respan(src_tokens: List[str], tgt_tokens: List[str], src_span: Union[List[tuple], Dict[Tuple[int, int], str]]):
     """
     transfer original spans to target spans
 
@@ -24,7 +23,6 @@ def respan(src_tokens: List[str],
     :return: a list of transferred span tuples.
     """
 
-    from tokenizations import get_alignments
     s2t, _ = get_alignments(src_tokens, tgt_tokens)
 
     if isinstance(src_span, list):
@@ -57,9 +55,7 @@ def respan(src_tokens: List[str],
     return tgt_spans
 
 
-def respan_text(src_txt: str,
-                tgt_txt: str,
-                src_span: Union[List[tuple], Dict[Tuple[int, int], str]]):
+def respan_text(src_txt: str, tgt_txt: str, src_span: Union[List[tuple], Dict[Tuple[int, int], str]]):
     """
     transfer original spans to target spans
 
@@ -70,12 +66,11 @@ def respan_text(src_txt: str,
 
     :return: a list of transferred span tuples.
     """
-    from textspan import align_spans
 
     if isinstance(src_span, list):
         tgt_spans = align_spans(src_span, src_txt, tgt_txt)
         tgt_spans = [s[0] for s in tgt_spans]
-    
+
     elif isinstance(src_span, dict):
         spans = list(src_span.keys())
         ent_types = list(src_span.values())
@@ -89,9 +84,7 @@ def respan_text(src_txt: str,
     return tgt_spans
 
 
-def txt_to_token_span(tokens: List[str],
-                      text: str,
-                      txt_spans: Union[List[tuple], Dict[Tuple[int, int], str]]):
+def txt_to_token_span(tokens: List[str], text: str, txt_spans: Union[List[tuple], Dict[Tuple[int, int], str]]):
     """
     Transfer text-domain spans to token-domain spans
     :param tokens: tokens
@@ -99,7 +92,6 @@ def txt_to_token_span(tokens: List[str],
     :param txt_spans: text spans tuples: (start, end, ...)
     :return: a list of transferred span tuples.
     """
-    from textspan import get_original_spans
     token_indices = get_original_spans(tokens, text)
 
     try:
@@ -147,9 +139,7 @@ def txt_to_token_span(tokens: List[str],
     return tgt_spans
 
 
-def token_to_txt_span(tokens: List[str],
-                      text: str,
-                      token_spans: Union[List[tuple], dict]) -> Union[List[tuple], dict]:
+def token_to_txt_span(tokens: List[str], text: str, token_spans: Union[List[tuple], dict]) -> Union[List[tuple], dict]:
     """
     Transfer text-domain spans to token-domain spans
     :param tokens: tokens
@@ -157,7 +147,6 @@ def token_to_txt_span(tokens: List[str],
     :param token_spans: text spans tuples: (start, end, ...)
     :return: a list of transferred span tuples.
     """
-    from textspan import get_original_spans
     token_indices = get_original_spans(tokens, text)
     try:
         token_indices = [item[0] for item in token_indices]
@@ -180,8 +169,7 @@ def token_to_txt_span(tokens: List[str],
     return tgt_spans
 
 
-def span_to_label(labeled_spans: Dict[Tuple[int, int], str],
-                  tokens: List[str]) -> List[str]:
+def span_to_label(labeled_spans: Dict[Tuple[int, int], str], tokens: List[str]) -> List[str]:
     """
     Convert entity spans to labels
 
@@ -197,43 +185,42 @@ def span_to_label(labeled_spans: Dict[Tuple[int, int], str],
     if labeled_spans:
         assert list(labeled_spans.keys())[-1][1] <= len(tokens), ValueError("label spans out of scope!")
 
-    labels = ['O'] * len(tokens)
+    labels = ["O"] * len(tokens)
     for (start, end), label in labeled_spans.items():
         if type(label) == list or type(label) == tuple:
             lb = label[0][0]
         else:
             lb = label
-        labels[start] = 'B-' + lb
+        labels[start] = "B-" + lb
         if end - start > 1:
-            labels[start + 1: end] = ['I-' + lb] * (end - start - 1)
+            labels[start + 1 : end] = ["I-" + lb] * (end - start - 1)
 
     return labels
 
 
-def label_to_span(labels: List[str],
-                  scheme: Optional[str] = 'BIO') -> dict:
+def label_to_span(labels: List[str], scheme: Optional[str] = "BIO") -> dict:
     """
     convert labels to spans
     :param labels: a list of labels
     :param scheme: labeling scheme, in ['BIO', 'BILOU'].
     :return: labeled spans, a list of tuples (start_idx, end_idx, label)
     """
-    assert scheme in ['BIO', 'BILOU'], ValueError("unknown labeling scheme")
+    assert scheme in ["BIO", "BILOU"], ValueError("unknown labeling scheme")
 
     labeled_spans = dict()
     i = 0
     while i < len(labels):
-        if labels[i] == 'O':
+        if labels[i] == "O":
             i += 1
             continue
         else:
-            if scheme == 'BIO':
-                if labels[i][0] == 'B':
+            if scheme == "BIO":
+                if labels[i][0] == "B":
                     start = i
                     ent = labels[i][2:]
                     i += 1
                     try:
-                        while labels[i][0] == 'I':
+                        while labels[i][0] == "I":
                             # B-ent followed by I- with different entity; discard the incorrect I- labels
                             if labels[i][2:] != ent:
                                 break
@@ -245,21 +232,21 @@ def label_to_span(labels: List[str],
                         labeled_spans[(start, end)] = ent
                         i += 1
                 # this should not happen
-                elif labels[i][0] == 'I':
+                elif labels[i][0] == "I":
                     i += 1
-            elif scheme == 'BILOU':
-                if labels[i][0] == 'U':
+            elif scheme == "BILOU":
+                if labels[i][0] == "U":
                     start = i
                     end = i + 1
                     ent = labels[i][2:]
                     labeled_spans[(start, end)] = ent
                     i += 1
-                elif labels[i][0] == 'B':
+                elif labels[i][0] == "B":
                     start = i
                     ent = labels[i][2:]
                     i += 1
                     try:
-                        while labels[i][0] != 'L':
+                        while labels[i][0] != "L":
                             i += 1
                         end = i
                         labeled_spans[(start, end)] = ent
@@ -401,9 +388,9 @@ def split_list_by_lengths(input_list: list, lengths: List[int]) -> List[list]:
     return output
 
 
-def sort_tuples_by_element_idx(tups: List[tuple],
-                               idx: Optional[int] = 0,
-                               reverse: Optional[bool] = False) -> List[tuple]:
+def sort_tuples_by_element_idx(
+    tups: List[tuple], idx: Optional[int] = 0, reverse: Optional[bool] = False
+) -> List[tuple]:
     """
     Function to sort the list of tuples by the second item
 

@@ -8,13 +8,15 @@ from typing import List, Optional
 logger = logging.getLogger(__name__)
 
 
-def build_bert_token_embeddings(tk_seq_list: List[List[str]],
-                                model_or_name,
-                                tokenizer_or_name,
-                                max_seq_length: Optional[int] = 512,
-                                sent_lengths_list: Optional[List[List[int]]] = None,
-                                device: Optional = 'cpu',
-                                prepend_cls_embs: Optional[bool] = False) -> List[torch.Tensor]:
+def build_bert_token_embeddings(
+    tk_seq_list: List[List[str]],
+    model_or_name,
+    tokenizer_or_name,
+    max_seq_length: Optional[int] = 512,
+    sent_lengths_list: Optional[List[List[int]]] = None,
+    device: Optional = "cpu",
+    prepend_cls_embs: Optional[bool] = False,
+) -> List[torch.Tensor]:
     """
     Build the BERT token embeddings of the input sentences
 
@@ -36,8 +38,11 @@ def build_bert_token_embeddings(tk_seq_list: List[List[str]],
     from transformers import AutoTokenizer, AutoModel
     from .text import split_overlength_bert_input_sequence
 
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_or_name, add_prefix_space=True) \
-        if isinstance(tokenizer_or_name, str) else tokenizer_or_name
+    tokenizer = (
+        AutoTokenizer.from_pretrained(tokenizer_or_name, add_prefix_space=True)
+        if isinstance(tokenizer_or_name, str)
+        else tokenizer_or_name
+    )
     model = AutoModel.from_pretrained(model_or_name) if isinstance(model_or_name, str) else model_or_name
     model.to(device)
 
@@ -49,9 +54,8 @@ def build_bert_token_embeddings(tk_seq_list: List[List[str]],
     n = 0
 
     # update input sentences so that every sentence has BERT length < 510
-    logger.debug(f'Checking lengths. Paragraphs longer than {max_seq_length} tokens will be separated.')
+    logger.debug(f"Checking lengths. Paragraphs longer than {max_seq_length} tokens will be separated.")
     for tk_seq, sent_lens in zip(tk_seq_list, sent_lengths_list):
-
         tk_seqs = split_overlength_bert_input_sequence(tk_seq, tokenizer, max_seq_length, sent_lens)
         n_splits = len(tk_seqs)
         split_tk_seq_list += tk_seqs
@@ -59,11 +63,11 @@ def build_bert_token_embeddings(tk_seq_list: List[List[str]],
         ori2split_ids_map.append(list(range(n, n + n_splits)))
         n += n_splits
 
-    logger.debug('Building embeddings...')
+    logger.debug("Building embeddings...")
     sent_emb_list = build_emb_helper(split_tk_seq_list, tokenizer, model, device, prepend_cls_embs)
 
     # Combine embeddings so that the embedding lengths equal to the lengths of the original sentences
-    logger.debug('Combining results...')
+    logger.debug("Combining results...")
     tk_emb_seq_list = list()
 
     for sep_ids in ori2split_ids_map:
@@ -80,7 +84,7 @@ def build_bert_token_embeddings(tk_seq_list: List[List[str]],
             else:
                 cat_emb = torch.cat([cat_emb, sent_emb_list[sep_idx]], dim=0)
 
-        assert cat_emb is not None, ValueError('Empty embedding!')
+        assert cat_emb is not None, ValueError("Empty embedding!")
         tk_emb_seq_list.append(cat_emb)
 
     # The embeddings of [CLS] + original tokens
@@ -93,11 +97,9 @@ def build_bert_token_embeddings(tk_seq_list: List[List[str]],
     return tk_emb_seq_list
 
 
-def build_emb_helper_legacy(tk_seq_list: List[List[str]],
-                            tokenizer,
-                            model,
-                            device: Optional = 'cpu',
-                            prepend_cls_embs: Optional[bool] = False):
+def build_emb_helper_legacy(
+    tk_seq_list: List[List[str]], tokenizer, model, device: Optional = "cpu", prepend_cls_embs: Optional[bool] = False
+):
     """
     Helper function for budding bert embeddings for tokenized sequences (deprecated)
     """
@@ -105,7 +107,6 @@ def build_emb_helper_legacy(tk_seq_list: List[List[str]],
     tk_emb_seq_list = list()
 
     for tk_seq in tqdm(tk_seq_list):
-
         encs = tokenizer(tk_seq, is_split_into_words=True, add_special_tokens=True, return_offsets_mapping=True)
         input_ids = torch.tensor([encs.input_ids], device=device)
         offsets_mapping = np.array(encs.offset_mapping)
@@ -113,13 +114,13 @@ def build_emb_helper_legacy(tk_seq_list: List[List[str]],
         # calculate BERT last layer embeddings
         with torch.no_grad():
             # get the last hidden state from the BERT model
-            last_hidden_states = model(input_ids)[0].squeeze(0).to('cpu')
+            last_hidden_states = model(input_ids)[0].squeeze(0).to("cpu")
             # remove the token embeddings regarding the [CLS] and [SEP]
             trunc_hidden_states = last_hidden_states[1:-1, :]
 
         ori2bert_tk_ids = list()
         idx = 0
-        for tk_start in (offsets_mapping[1:-1, 0] == 0):
+        for tk_start in offsets_mapping[1:-1, 0] == 0:
             if tk_start:
                 ori2bert_tk_ids.append([idx])
             else:
@@ -136,19 +137,16 @@ def build_emb_helper_legacy(tk_seq_list: List[List[str]],
             emb_list = [last_hidden_states[0, :]] + emb_list
 
         bert_emb = torch.stack(emb_list)
-        assert not bert_emb.isnan().any(), ValueError('NaN Embeddings!')
+        assert not bert_emb.isnan().any(), ValueError("NaN Embeddings!")
         tk_emb_seq_list.append(bert_emb.detach().cpu())
 
     return tk_emb_seq_list
 
 
 # noinspection PyComparisonWithNone
-def build_emb_helper(tk_seq_list: List[List[str]],
-                     tokenizer,
-                     model,
-                     device: Optional = 'cpu',
-                     prepend_cls_embs: Optional[bool] = False) -> List[torch.Tensor]:
-
+def build_emb_helper(
+    tk_seq_list: List[List[str]], tokenizer, model, device: Optional = "cpu", prepend_cls_embs: Optional[bool] = False
+) -> List[torch.Tensor]:
     """
     Helper function for budding bert embeddings for tokenized sequences.
 
@@ -164,13 +162,11 @@ def build_emb_helper(tk_seq_list: List[List[str]],
     -------
     A list of torch tensor
     """
-    from tokenizations import get_alignments
     model.eval()
 
     tk_emb_seq_list = list()
 
     for tk_seq in tqdm(tk_seq_list):
-
         # `substitute_unknown_tokens` should be called outside this function
         # tk_seq = substitute_unknown_tokens(tk_seq, tokenizer)
         tokenized_text = tokenizer(tk_seq, is_split_into_words=True)
@@ -184,12 +180,13 @@ def build_emb_helper(tk_seq_list: List[List[str]],
 
         # this should not happen
         if np.setdiff1d(np.arange(len(tk_seq)), word_ids).size > 0:
-            raise ValueError("Failed to map all tokens to BERT tokens! "
-                             "Consider running `substitute_unknown_tokens` before calling this function")
+            raise ValueError(
+                "Failed to map all tokens to BERT tokens! "
+                "Consider running `substitute_unknown_tokens` before calling this function"
+            )
 
         ori2bert = list()
-        for idx, word_idx in enumerate(word_ids[1: -1]):  # skip the special tokens
-
+        for idx, word_idx in enumerate(word_ids[1:-1]):  # skip the special tokens
             if word_idx != -100:
                 ori2bert.append([idx])
             else:
@@ -198,7 +195,7 @@ def build_emb_helper(tk_seq_list: List[List[str]],
         # calculate BERT last layer embeddings
         with torch.no_grad():
             # get the last hidden state from the BERT model
-            last_hidden_states = model(torch.tensor([tokenized_text.input_ids], device=device))[0].squeeze(0).to('cpu')
+            last_hidden_states = model(torch.tensor([tokenized_text.input_ids], device=device))[0].squeeze(0).to("cpu")
             # remove the token embeddings regarding the [CLS] and [SEP]
             trunc_hidden_states = last_hidden_states[1:-1, :]
 
@@ -212,7 +209,7 @@ def build_emb_helper(tk_seq_list: List[List[str]],
             emb_list = [last_hidden_states[0, :]] + emb_list
 
         bert_emb = torch.stack(emb_list)
-        assert not bert_emb.isnan().any(), ValueError('NaN Embeddings!')
+        assert not bert_emb.isnan().any(), ValueError("NaN Embeddings!")
         tk_emb_seq_list.append(bert_emb.detach().cpu())
 
     return tk_emb_seq_list
