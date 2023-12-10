@@ -5,3 +5,5 @@ seqeval~=1.2.2
 torch~=1.10.0
 tqdm~=4.50.2
 transformers~=4.12.3
+spacy-alignments~=0.9.1
+pytextspan~=0.5.7

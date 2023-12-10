@@ -6,7 +6,8 @@ import itertools
 import numpy as np
 
 from typing import List, Dict, Tuple, Optional, Union
-from .tokenizations import get_alignments, align_spans, get_original_spans
+from spacy_alignments import get_alignments
+from textspan import align_spans, get_original_spans
 
 logger = logging.getLogger(__name__)
 
