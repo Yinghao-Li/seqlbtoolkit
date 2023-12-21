@@ -14,6 +14,7 @@ class TqdmLoggingHandler(logging.Handler):
     """
     Don't let logger print interfere with tqdm progress bar
     """
+
     def __init__(self, level=logging.NOTSET):
         super().__init__(level)
 
@@ -27,7 +28,7 @@ class TqdmLoggingHandler(logging.Handler):
 
 
 # noinspection PyArgumentList
-def set_logging(log_dir: Optional[str] = None):
+def set_logging(log_path: Optional[str] = None):
     """
     setup logging
     Last modified: 07/20/21
@@ -40,19 +41,19 @@ def set_logging(log_dir: Optional[str] = None):
     -------
     None
     """
-    if log_dir and log_dir != 'null':
-        log_dir = os.path.abspath(log_dir)
-        if not os.path.isdir(os.path.split(log_dir)[0]):
-            os.makedirs(os.path.abspath(os.path.normpath(os.path.split(log_dir)[0])))
-        if os.path.isfile(log_dir):
-            os.remove(log_dir)
+    if log_path and log_path != "null":
+        log_path = os.path.abspath(log_path)
+        if not os.path.isdir(os.path.split(log_path)[0]):
+            os.makedirs(os.path.abspath(os.path.normpath(os.path.split(log_path)[0])))
+        if os.path.isfile(log_path):
+            os.remove(log_path)
         logging.basicConfig(
             format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
             datefmt="%m/%d/%Y %H:%M:%S",
             level=logging.INFO,
             handlers=[
                 # logging.StreamHandler(sys.stdout),
-                logging.FileHandler(log_dir),
+                logging.FileHandler(log_path),
                 TqdmLoggingHandler(),
             ],
         )
@@ -66,7 +67,7 @@ def set_logging(log_dir: Optional[str] = None):
                 TqdmLoggingHandler()
             ],
         )
-    
+
     return None
 
 
@@ -83,12 +84,15 @@ def logging_args(args):
     -------
     None
     """
-    arg_elements = {attr: getattr(args, attr) for attr in dir(args) if not callable(getattr(args, attr))
-                    and not attr.startswith("__") and not attr.startswith("_")}
+    arg_elements = {
+        attr: getattr(args, attr)
+        for attr in dir(args)
+        if not callable(getattr(args, attr)) and not attr.startswith("__") and not attr.startswith("_")
+    }
     logger.info(f"Parameters: ({type(args)})")
     for arg_element, value in arg_elements.items():
         logger.info(f"  {arg_element}: {value}")
-    
+
     return None
 
 
@@ -136,7 +140,7 @@ def save_json(obj, path: str, collapse_level: Optional[int] = None):
     if collapse_level:
         json_obj = prettify_json(json_obj, collapse_level=collapse_level)
 
-    with open(path, 'w', encoding='utf-8') as f:
+    with open(path, "w", encoding="utf-8") as f:
         f.write(json_obj)
 
     return None
@@ -163,8 +167,8 @@ def prettify_json(text, indent=2, collapse_level=4):
     ```
     """
     pattern = r"[\r\n]+ {%d,}" % (indent * collapse_level)
-    text = re.sub(pattern, ' ', text)
-    text = re.sub(r'([\[({])+ +', r'\g<1>', text)
-    text = re.sub(r'[\r\n]+ {%d}([])}])' % (indent * (collapse_level-1)), r'\g<1>', text)
-    text = re.sub(r'(\S) +([])}])', r'\g<1>\g<2>', text)
+    text = re.sub(pattern, " ", text)
+    text = re.sub(r"([\[({])+ +", r"\g<1>", text)
+    text = re.sub(r"[\r\n]+ {%d}([])}])" % (indent * (collapse_level - 1)), r"\g<1>", text)
+    text = re.sub(r"(\S) +([])}])", r"\g<1>\g<2>", text)
     return text
