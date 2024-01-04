@@ -146,6 +146,22 @@ def save_json(obj, path: str, collapse_level: Optional[int] = None):
     return None
 
 
+def replace_pattern_with_list(input_string, pattern, replacements):
+    # Find all occurrences of the pattern
+    occurrences = re.findall(pattern, input_string)
+
+    # Check if the number of occurrences matches the length of the replacements list
+    if len(occurrences) != len(replacements):
+        print(len(occurrences), len(replacements))
+        raise ValueError("The number of replacements does not match the number of occurrences.")
+
+    # Replace each occurrence with an element from the replacements list
+    for replacement in replacements:
+        input_string = re.sub(pattern, replacement.replace(r"\n", r"\\n"), input_string, count=1)
+
+    return input_string
+
+
 def prettify_json(text, indent=2, collapse_level=4):
     """
     Make json file more readable by collapsing indent levels higher than `collapse_level`.
@@ -166,9 +182,16 @@ def prettify_json(text, indent=2, collapse_level=4):
         f.write(json_text)
     ```
     """
+    # protect text within quotation marks
+    pattern = r'((?<!\\)"(?:.*?)(?<!\\)")'
+    quoted_text = re.findall(pattern, text)
+    text = re.sub(pattern, '"!@#$CONTENT$#@!"', text)
+
     pattern = r"[\r\n]+ {%d,}" % (indent * collapse_level)
     text = re.sub(pattern, " ", text)
     text = re.sub(r"([\[({])+ +", r"\g<1>", text)
     text = re.sub(r"[\r\n]+ {%d}([])}])" % (indent * (collapse_level - 1)), r"\g<1>", text)
     text = re.sub(r"(\S) +([])}])", r"\g<1>\g<2>", text)
+
+    text = replace_pattern_with_list(text, re.escape('"!@#$CONTENT$#@!"'), quoted_text)
     return text
