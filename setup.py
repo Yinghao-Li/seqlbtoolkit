@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="SeqLbToolkit",
-    version="0.4.3",
+    version="0.4.4",
     author="Yinghao Li",
     author_email="yinghaoli@gatech.edu",
     license="MIT",

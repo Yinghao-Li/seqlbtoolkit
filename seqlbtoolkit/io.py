@@ -162,7 +162,7 @@ def replace_pattern_with_list(input_string, pattern, replacements):
     return input_string
 
 
-def prettify_json(text, indent=2, collapse_level=4):
+def prettify_json(text, indent=2, collapse_level=4, disable_content_checking=False):
     """
     Make json file more readable by collapsing indent levels higher than `collapse_level`.
 
@@ -171,6 +171,9 @@ def prettify_json(text, indent=2, collapse_level=4):
     text: input json text obj
     indent: the indent value of your json text. Notice that this value needs to be larger than 0
     collapse_level: the level from which the program stops adding new lines
+    disable_content_checking: set to True to disable content checking within quotation marks.
+        Content checking is used to protect text within quotation marks from being collapsed.
+        Setting this to True will make the program run faster but may cause unexpected results.
 
     Usage
     -----
@@ -182,10 +185,11 @@ def prettify_json(text, indent=2, collapse_level=4):
         f.write(json_text)
     ```
     """
-    # protect text within quotation marks
-    pattern = r'((?<!\\)"(?:.*?)(?<!\\)")'
-    quoted_text = re.findall(pattern, text)
-    text = re.sub(pattern, '"!@#$CONTENT$#@!"', text)
+    if not disable_content_checking:
+        # protect text within quotation marks
+        pattern = r'((?<!\\)"(?:.*?)(?<!\\)")'
+        quoted_text = re.findall(pattern, text)
+        text = re.sub(pattern, '"!@#$CONTENT$#@!"', text)
 
     pattern = r"[\r\n]+ {%d,}" % (indent * collapse_level)
     text = re.sub(pattern, " ", text)
@@ -193,5 +197,7 @@ def prettify_json(text, indent=2, collapse_level=4):
     text = re.sub(r"[\r\n]+ {%d}([])}])" % (indent * (collapse_level - 1)), r"\g<1>", text)
     text = re.sub(r"(\S) +([])}])", r"\g<1>\g<2>", text)
 
-    text = replace_pattern_with_list(text, re.escape('"!@#$CONTENT$#@!"'), quoted_text)
+    if not disable_content_checking:
+        text = replace_pattern_with_list(text, re.escape('"!@#$CONTENT$#@!"'), quoted_text)
+
     return text
