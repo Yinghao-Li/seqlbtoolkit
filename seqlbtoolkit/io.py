@@ -117,7 +117,7 @@ def init_dir(directory: str, clear_original_content: Optional[bool] = True):
     return None
 
 
-def save_json(obj, path: str, collapse_level: Optional[int] = None):
+def save_json(obj, path: str, collapse_level: Optional[int] = None, disable_content_checking: Optional[bool] = False):
     """
     Save objective to a json file.
     Create this function so that we don't need to worry about creating parent folders every time
@@ -127,6 +127,9 @@ def save_json(obj, path: str, collapse_level: Optional[int] = None):
     obj: the objective to save
     path: the path to save
     collapse_level: set to any collapse value to prettify output json accordingly
+    disable_content_checking: set to True to disable content checking within quotation marks.
+        Content checking is used to protect text within quotation marks from being collapsed.
+        Setting this to True will make the program run faster but may cause unexpected results.
 
     Returns
     -------
@@ -138,7 +141,9 @@ def save_json(obj, path: str, collapse_level: Optional[int] = None):
 
     json_obj = json.dumps(obj, indent=2, ensure_ascii=False)
     if collapse_level:
-        json_obj = prettify_json(json_obj, collapse_level=collapse_level)
+        json_obj = prettify_json(
+            json_obj, collapse_level=collapse_level, disable_content_checking=disable_content_checking
+        )
 
     with open(path, "w", encoding="utf-8") as f:
         f.write(json_obj)
