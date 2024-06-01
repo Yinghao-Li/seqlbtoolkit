@@ -1,71 +1,50 @@
 import os
+import os.path as osp
 import re
-import tqdm
 import json
+import yaml
 import shutil
 import logging
 from pathlib import Path
 from typing import Optional
 
+from rich.logging import RichHandler
+from .utils import deprecated
+
 logger = logging.getLogger(__name__)
 
 
-class TqdmLoggingHandler(logging.Handler):
-    """
-    Don't let logger print interfere with tqdm progress bar
-    """
-
-    def __init__(self, level=logging.NOTSET):
-        super().__init__(level)
-
-    def emit(self, record):
-        try:
-            msg = self.format(record)
-            tqdm.tqdm.write(msg)
-            self.flush()
-        except Exception:
-            self.handleError(record)
-
-
-# noinspection PyArgumentList
 def set_logging(log_path: Optional[str] = None):
-    """
-    setup logging
-    Last modified: 07/20/21
+    """Sets up logging format and file handler.
 
-    Parameters
-    ----------
-    log_dir: where to save logging file. Leave None to save no log files
-
-    Returns
-    -------
-    None
+    Args:
+        log_path (Optional[str]): Path to save the logging file. If None, no log file is saved.
     """
-    if log_path and log_path != "null":
-        log_path = os.path.abspath(log_path)
-        if not os.path.isdir(os.path.split(log_path)[0]):
-            os.makedirs(os.path.abspath(os.path.normpath(os.path.split(log_path)[0])))
-        if os.path.isfile(log_path):
+    rh = RichHandler()
+    rh.setFormatter(logging.Formatter("%(message)s", datefmt="[%m/%d %X]"))
+
+    if log_path:
+        log_path = osp.abspath(log_path)
+        if not osp.isdir(osp.split(log_path)[0]):
+            os.makedirs(osp.abspath(osp.normpath(osp.split(log_path)[0])))
+        if osp.isfile(log_path):
             os.remove(log_path)
+
+        file_handler = logging.FileHandler(filename=log_path)
+        file_handler.setLevel(logging.DEBUG)
+
         logging.basicConfig(
-            format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
-            datefmt="%m/%d/%Y %H:%M:%S",
-            level=logging.INFO,
-            handlers=[
-                # logging.StreamHandler(sys.stdout),
-                logging.FileHandler(log_path),
-                TqdmLoggingHandler(),
-            ],
+            level="NOTSET",
+            format="%(asctime)s %(levelname)-8s %(message)-80s     @ %(pathname)-s:%(lineno)d",
+            datefmt="[%m/%d %X]",
+            handlers=[file_handler, rh],
         )
+
     else:
         logging.basicConfig(
-            format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
-            datefmt="%m/%d/%Y %H:%M:%S",
-            level=logging.INFO,
-            handlers=[
-                # logging.StreamHandler(sys.stdout),
-                TqdmLoggingHandler()
-            ],
+            datefmt="[%m/%d %X]",
+            level="NOTSET",
+            handlers=[rh],
         )
 
     return None
@@ -73,8 +52,7 @@ def set_logging(log_path: Optional[str] = None):
 
 def logging_args(args):
     """
-    Logging model arguments into logs
-    Last modified: 08/19/21
+    Logging model arguments
 
     Parameters
     ----------
@@ -87,11 +65,10 @@ def logging_args(args):
     arg_elements = {
         attr: getattr(args, attr)
         for attr in dir(args)
-        if not callable(getattr(args, attr)) and not attr.startswith("__") and not attr.startswith("_")
+        if not callable(getattr(args, attr)) and not attr.startswith("_")
     }
-    logger.info(f"Parameters: ({type(args)})")
-    for arg_element, value in arg_elements.items():
-        logger.info(f"  {arg_element}: {value}")
+    arg_string = yaml.dump(arg_elements, default_flow_style=False, sort_keys=False)
+    logger.info(f"\nConfigurations ({type(args).__name__}):\n{arg_string}")
 
     return None
 
@@ -117,40 +94,7 @@ def init_dir(directory: str, clear_original_content: Optional[bool] = True):
     return None
 
 
-def save_json(obj, path: str, collapse_level: Optional[int] = None, disable_content_checking: Optional[bool] = False):
-    """
-    Save objective to a json file.
-    Create this function so that we don't need to worry about creating parent folders every time
-
-    Parameters
-    ----------
-    obj: the objective to save
-    path: the path to save
-    collapse_level: set to any collapse value to prettify output json accordingly
-    disable_content_checking: set to True to disable content checking within quotation marks.
-        Content checking is used to protect text within quotation marks from being collapsed.
-        Setting this to True will make the program run faster but may cause unexpected results.
-
-    Returns
-    -------
-    None
-    """
-    file_dir = os.path.dirname(os.path.normpath(path))
-    if file_dir:
-        os.makedirs(file_dir, exist_ok=True)
-
-    json_obj = json.dumps(obj, indent=2, ensure_ascii=False)
-    if collapse_level:
-        json_obj = prettify_json(
-            json_obj, collapse_level=collapse_level, disable_content_checking=disable_content_checking
-        )
-
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(json_obj)
-
-    return None
-
-
+@deprecated
 def replace_pattern_with_list(input_string, pattern, replacements):
     # Find all occurrences of the pattern
     occurrences = re.findall(pattern, input_string)
@@ -167,6 +111,7 @@ def replace_pattern_with_list(input_string, pattern, replacements):
     return input_string
 
 
+@deprecated("Use `dumps_json` instead.")
 def prettify_json(text, indent=2, collapse_level=4, disable_content_checking=False):
     """
     Make json file more readable by collapsing indent levels higher than `collapse_level`.
@@ -190,6 +135,7 @@ def prettify_json(text, indent=2, collapse_level=4, disable_content_checking=Fal
         f.write(json_text)
     ```
     """
+
     if not disable_content_checking:
         # protect text within quotation marks
         pattern = r'((?<!\\)"(?:.*?)(?<!\\)")'
@@ -206,3 +152,139 @@ def prettify_json(text, indent=2, collapse_level=4, disable_content_checking=Fal
         text = replace_pattern_with_list(text, re.escape('"!@#$CONTENT$#@!"'), quoted_text)
 
     return text
+
+
+def save_json(
+    obj,
+    path: str,
+    expand_to_level: int = None,
+    collapse_level: int = None,
+    disable_content_checking: bool = None,
+    **kwargs,
+):
+    """
+    Save objective to a json file.
+    Create this function so that we don't need to worry about creating parent folders every time
+
+    Args
+        obj: the objective to save
+        path: the path to save
+        expand_to_level: set to any collapse value to prettify output json accordingly
+        collapse_level (deprecated): same as `expand_to_level`
+        disable_content_checking (deprecated): set to True to disable content checking within quotation marks.
+            Content checking is used to protect text within quotation marks from being collapsed.
+            Setting this to True will make the program run faster but may cause unexpected results.
+
+    """
+    if collapse_level is not None and expand_to_level is None:
+        logger.warning("`collapse_level` is deprecated. Please use `expand_to_level` instead.")
+        expand_to_level = collapse_level
+    if disable_content_checking is not None:
+        logger.warning("`disable_content_checking` is deprecated. Please remove it from your function call.")
+
+    file_dir = os.path.dirname(os.path.normpath(path))
+    if file_dir:
+        os.makedirs(file_dir, exist_ok=True)
+
+    with open(path, "w", encoding="utf-8") as f:
+        dump_json(obj, f, expand_to_level=expand_to_level, **kwargs)
+
+    return None
+
+
+def dump_json(obj, f, expand_to_level=None, **kwargs) -> None:
+    """Save an object to a JSON file.
+
+    Args:
+        obj: The object to save.
+        f: The file object to write to.
+        expand_to_level: The level to expand. This function will behave like json.dump if set to None.
+        **kwargs: Additional arguments for json.dump.
+
+    Returns:
+        None
+    """
+    obj = dumps_json_recursive(obj, tgt_lvl=expand_to_level) if expand_to_level is not None else obj
+
+    json.dump(obj, f, **kwargs)
+
+    return None
+
+
+def dumps_json(x, expand_to_level=None, **kwargs):
+    """Convert a Python object to a JSON string with optional expand level.
+
+    Args:
+        x: Python object to convert.
+        expand_to_level: The level to expand. This function will behave like json.dumps if set to None.
+        **kwargs: Additional arguments for json.dumps.
+
+    Examples:
+        ```python
+        >>> a = {"data": [{'a': 1, 'b': 2, 'c': [1,2,3, {'d': 4, 'e': 5, 'f': [6,7,'\'\"8']}]},"x", "y", "z"]}
+        >>> print(dumps_json(a, expand_to_level=2, indent=2))
+        {
+          "data": [
+            "{\"a\": 1, \"b\": 2, \"c\": [1, 2, 3, {\"d\": 4, \"e\": 5, \"f\": [6, 7, \"'\\\"8\"]}]}",
+            "\"x\"",
+            "\"y\"",
+            "\"z\""
+          ]
+        }
+        >>> print(dumps_json(a, indent=2))
+        {
+          "data": [
+            {
+              "a": 1,
+              "b": 2,
+              "c": [
+                1,
+                2,
+                3,
+                {
+                  "d": 4,
+                  "e": 5,
+                  "f": [
+                    6,
+                    7,
+                    "'\"8"
+                  ]
+                }
+              ]
+            },
+            "x",
+            "y",
+            "z"
+          ]
+        }
+        >>> print(dumps_json(a, indent=2, expand_to_level=0))
+        {"data": [{"a": 1, "b": 2, "c": [1, 2, 3, {"d": 4, "e": 5, "f": [6, 7, "'\"8"]}]}, "x", "y", "z"]}
+        ```
+
+    Returns:
+        str: JSON string.
+    """
+    if expand_to_level is None:
+        return json.dumps(x, **kwargs)
+    return json.dumps(dumps_json_recursive(x, tgt_lvl=expand_to_level), **kwargs)
+
+
+def dumps_json_recursive(x, curr_lvl=0, tgt_lvl=2):
+    """Convert the parts of an recursive object whose depth deeper than tgt_lvl to JSON strings.
+
+    Args:
+        x: Python object to convert.
+        curr_lvl: Current level (depth) of recursion.
+        tgt_lvl: Target level (depth) of recursion.
+
+    Returns:
+        obj: the original object with parts deeper than tgt_lvl converted to JSON strings.
+    """
+    if not isinstance(x, (dict, list, tuple)) or curr_lvl == tgt_lvl:
+        return json.dumps(x)
+    if isinstance(x, dict):
+        return {k: dumps_json_recursive(v, curr_lvl + 1, tgt_lvl) for k, v in x.items()}
+    if isinstance(x, list):
+        return [dumps_json_recursive(v, curr_lvl + 1, tgt_lvl) for v in x]
+    if isinstance(x, tuple):
+        return tuple(dumps_json_recursive(v, curr_lvl + 1, tgt_lvl) for v in x)

@@ -2,21 +2,20 @@ import logging
 import torch
 import numpy as np
 from tqdm import tqdm
-from typing import List, Optional
 
 
 logger = logging.getLogger(__name__)
 
 
 def build_bert_token_embeddings(
-    tk_seq_list: List[List[str]],
+    tk_seq_list: list[list[str]],
     model_or_name,
     tokenizer_or_name,
-    max_seq_length: Optional[int] = 512,
-    sent_lengths_list: Optional[List[List[int]]] = None,
-    device: Optional = "cpu",
-    prepend_cls_embs: Optional[bool] = False,
-) -> List[torch.Tensor]:
+    max_seq_length: int = 512,
+    sent_lengths_list: list[list[int]] = None,
+    device="cpu",
+    prepend_cls_embs: bool = False,
+) -> list[torch.Tensor]:
     """
     Build the BERT token embeddings of the input sentences
 
@@ -33,7 +32,7 @@ def build_bert_token_embeddings(
 
     Returns
     -------
-    List[torch.Tensor]
+    list[torch.Tensor]
     """
     from transformers import AutoTokenizer, AutoModel
     from .text import split_overlength_bert_input_sequence
@@ -98,7 +97,11 @@ def build_bert_token_embeddings(
 
 
 def build_emb_helper_legacy(
-    tk_seq_list: List[List[str]], tokenizer, model, device: Optional = "cpu", prepend_cls_embs: Optional[bool] = False
+    tk_seq_list: list[list[str]],
+    tokenizer,
+    model,
+    device="cpu",
+    prepend_cls_embs: bool = False,
 ):
     """
     Helper function for budding bert embeddings for tokenized sequences (deprecated)
@@ -145,8 +148,12 @@ def build_emb_helper_legacy(
 
 # noinspection PyComparisonWithNone
 def build_emb_helper(
-    tk_seq_list: List[List[str]], tokenizer, model, device: Optional = "cpu", prepend_cls_embs: Optional[bool] = False
-) -> List[torch.Tensor]:
+    tk_seq_list: list[list[str]],
+    tokenizer,
+    model,
+    device="cpu",
+    prepend_cls_embs: bool = False,
+) -> list[torch.Tensor]:
     """
     Helper function for budding bert embeddings for tokenized sequences.
 
