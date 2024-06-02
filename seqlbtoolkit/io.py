@@ -5,8 +5,10 @@ import json
 import yaml
 import shutil
 import logging
+import textwrap
 from pathlib import Path
 from typing import Optional
+from dataclasses import asdict
 
 from rich.logging import RichHandler
 from .utils import deprecated
@@ -14,7 +16,7 @@ from .utils import deprecated
 logger = logging.getLogger(__name__)
 
 
-def set_logging(log_path: Optional[str] = None):
+def set_logging(log_path: Optional[str] = None, level: str = "NOTSET"):
     """Sets up logging format and file handler.
 
     Args:
@@ -34,7 +36,7 @@ def set_logging(log_path: Optional[str] = None):
         file_handler.setLevel(logging.DEBUG)
 
         logging.basicConfig(
-            level="NOTSET",
+            level=level,
             format="%(asctime)s %(levelname)-8s %(message)-80s     @ %(pathname)-s:%(lineno)d",
             datefmt="[%m/%d %X]",
             handlers=[file_handler, rh],
@@ -43,7 +45,7 @@ def set_logging(log_path: Optional[str] = None):
     else:
         logging.basicConfig(
             datefmt="[%m/%d %X]",
-            level="NOTSET",
+            level=level,
             handlers=[rh],
         )
 
@@ -64,11 +66,12 @@ def logging_args(args):
     """
     arg_elements = {
         attr: getattr(args, attr)
-        for attr in dir(args)
+        for attr in asdict(args)
         if not callable(getattr(args, attr)) and not attr.startswith("_")
     }
     arg_string = yaml.dump(arg_elements, default_flow_style=False, sort_keys=False)
-    logger.info(f"\nConfigurations ({type(args).__name__}):\n{arg_string}")
+    arg_string = textwrap.indent(arg_string, "  ")
+    logger.info(f"Configurations ({type(args).__name__}):\n{arg_string}")
 
     return None
 
