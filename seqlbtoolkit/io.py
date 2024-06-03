@@ -32,6 +32,8 @@ __all__ = [
     "save_json",
     "dump_json",
     "dumps_json",
+    "save_yaml",
+    "dumps_yaml",
 ]
 
 
