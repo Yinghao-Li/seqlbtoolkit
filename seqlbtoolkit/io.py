@@ -9,11 +9,52 @@ import textwrap
 from pathlib import Path
 from typing import Optional
 from dataclasses import asdict
-
 from rich.logging import RichHandler
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    TextColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+)
 from .utils import deprecated
 
 logger = logging.getLogger(__name__)
+
+
+__all__ = [
+    "progress_bar",
+    "set_logging",
+    "logging_args",
+    "remove_dir",
+    "init_dir",
+    "save_json",
+    "dump_json",
+    "dumps_json",
+]
+
+
+"""
+Define custom progress bar.
+Usage:
+
+```python
+with progress_bar as p:
+    for i in p.track(range(1000)):
+        # Do something here
+        pass
+```
+"""
+progress_bar = Progress(
+    TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+    BarColumn(),
+    MofNCompleteColumn(),
+    TextColumn("•"),
+    TimeElapsedColumn(),
+    TextColumn("•"),
+    TimeRemainingColumn(),
+)
 
 
 def set_logging(log_path: Optional[str] = None, level: str = "NOTSET"):
@@ -162,6 +203,8 @@ def save_json(
     path: str,
     expand_to_level: int = None,
     collapse_level: int = None,
+    indent: int = 2,
+    ensure_ascii: bool = False,
     disable_content_checking: bool = None,
     **kwargs,
 ):
@@ -177,6 +220,8 @@ def save_json(
         disable_content_checking (deprecated): set to True to disable content checking within quotation marks.
             Content checking is used to protect text within quotation marks from being collapsed.
             Setting this to True will make the program run faster but may cause unexpected results.
+        indent: the indent value of your json text. Notice that this value needs to be None or larger than 0
+        ensure_ascii: set to True to escape non-ASCII characters
 
     """
     if collapse_level is not None and expand_to_level is None:
@@ -190,7 +235,26 @@ def save_json(
         os.makedirs(file_dir, exist_ok=True)
 
     with open(path, "w", encoding="utf-8") as f:
-        dump_json(obj, f, expand_to_level=expand_to_level, **kwargs)
+        dump_json(obj, f, expand_to_level=expand_to_level, indent=indent, ensure_ascii=ensure_ascii, **kwargs)
+
+    return None
+
+
+def save_yaml(obj, path: str, **kwargs):
+    """
+    Save objective to a yaml file.
+    Create this function so that we don't need to worry about creating parent folders every time
+
+    Args
+        obj: the objective to save
+        path: the path to save
+    """
+    file_dir = os.path.dirname(os.path.normpath(path))
+    if file_dir:
+        os.makedirs(file_dir, exist_ok=True)
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(dumps_yaml(obj, **kwargs))
 
     return None
 
@@ -212,6 +276,19 @@ def dump_json(obj, f, expand_to_level=None, **kwargs) -> None:
     json.dump(obj, f, **kwargs)
 
     return None
+
+
+def dumps_yaml(obj, default_flow_style=False, sort_keys=False, **kwargs) -> str:
+    """Convert a Python object to a YAML string.
+
+    Args:
+        obj: Python object to convert.
+        **kwargs: Additional arguments for yaml.dump.
+
+    Returns:
+        str: YAML string.
+    """
+    return yaml.dump(obj, default_flow_style=default_flow_style, sort_keys=sort_keys, **kwargs)
 
 
 def dumps_json(x, expand_to_level=None, **kwargs):
