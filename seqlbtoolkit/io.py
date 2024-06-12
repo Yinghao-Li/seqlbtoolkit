@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "progress_bar",
     "set_logging",
-    "logging_args",
+    "log_args",
     "remove_dir",
     "init_dir",
     "save_json",
@@ -95,7 +95,7 @@ def set_logging(log_path: Optional[str] = None, level: str = "NOTSET"):
     return None
 
 
-def logging_args(args):
+def log_args(args):
     """
     Logging model arguments
 
@@ -116,6 +116,23 @@ def logging_args(args):
     arg_string = textwrap.indent(arg_string, "  ")
     logger.info(f"Configurations ({type(args).__name__}):\n{arg_string}")
 
+    return None
+
+
+@deprecated("Use `log_args` instead.")
+def logging_args(args):
+    """
+    Logging model arguments
+
+    Parameters
+    ----------
+    args: arguments
+
+    Returns
+    -------
+    None
+    """
+    log_args(args)
     return None
 
 
