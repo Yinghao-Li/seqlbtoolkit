@@ -1,18 +1,13 @@
-import os
 import copy
 import regex
 import logging
 import itertools
 import operator
-import torch
 import numpy as np
 from typing import List, Optional
 from transformers import AutoTokenizer
 
-from seqlbtoolkit.text import (
-    split_overlength_bert_input_sequence,
-    substitute_unknown_tokens
-)
+from seqlbtoolkit.text import split_overlength_bert_input_sequence, substitute_unknown_tokens
 from .base_dataset import BaseDataset
 
 
@@ -20,9 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class NERDataset(BaseDataset):
-    def __init__(self,
-                 text: Optional[List[List[str]]] = None,
-                 lbs: Optional[List[List[str]]] = None):
+    def __init__(self, text: Optional[List[List[str]]] = None, lbs: Optional[List[List[str]]] = None):
         super().__init__()
         self._text = text
         self._lbs = lbs
@@ -80,8 +73,11 @@ class NERDataset(BaseDataset):
         self
         """
 
-        tokenizer = AutoTokenizer.from_pretrained(tokenizer_or_name, add_prefix_space=True) \
-            if isinstance(tokenizer_or_name, str) else tokenizer_or_name
+        tokenizer = (
+            AutoTokenizer.from_pretrained(tokenizer_or_name, add_prefix_space=True)
+            if isinstance(tokenizer_or_name, str)
+            else tokenizer_or_name
+        )
 
         self._text = [substitute_unknown_tokens(tk_seq, tokenizer) for tk_seq in self._text]
         return self
@@ -103,12 +99,21 @@ class NERDataset(BaseDataset):
             logger.warning("The sequences are already separated!")
             return self
 
-        tokenizer = AutoTokenizer.from_pretrained(tokenizer_or_name, add_prefix_space=True) \
-            if isinstance(tokenizer_or_name, str) else tokenizer_or_name
+        tokenizer = (
+            AutoTokenizer.from_pretrained(tokenizer_or_name, add_prefix_space=True)
+            if isinstance(tokenizer_or_name, str)
+            else tokenizer_or_name
+        )
 
-        if (np.array([len(tk_ids) for tk_ids in tokenizer(
-                self._text, add_special_tokens=True, is_split_into_words=True
-        ).input_ids]) <= max_seq_length).all():
+        if (
+            np.array(
+                [
+                    len(tk_ids)
+                    for tk_ids in tokenizer(self._text, add_special_tokens=True, is_split_into_words=True).input_ids
+                ]
+            )
+            <= max_seq_length
+        ).all():
             self._is_separated = True
             return self
 

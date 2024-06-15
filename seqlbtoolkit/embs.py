@@ -1,7 +1,7 @@
 import logging
 import torch
 import numpy as np
-from tqdm import tqdm
+from .io import progress_bar
 
 
 logger = logging.getLogger(__name__)
@@ -109,39 +109,40 @@ def build_emb_helper_legacy(
 
     tk_emb_seq_list = list()
 
-    for tk_seq in tqdm(tk_seq_list):
-        encs = tokenizer(tk_seq, is_split_into_words=True, add_special_tokens=True, return_offsets_mapping=True)
-        input_ids = torch.tensor([encs.input_ids], device=device)
-        offsets_mapping = np.array(encs.offset_mapping)
+    with progress_bar as pbar:
+        for tk_seq in pbar.track(tk_seq_list):
+            encs = tokenizer(tk_seq, is_split_into_words=True, add_special_tokens=True, return_offsets_mapping=True)
+            input_ids = torch.tensor([encs.input_ids], device=device)
+            offsets_mapping = np.array(encs.offset_mapping)
 
-        # calculate BERT last layer embeddings
-        with torch.no_grad():
-            # get the last hidden state from the BERT model
-            last_hidden_states = model(input_ids)[0].squeeze(0).to("cpu")
-            # remove the token embeddings regarding the [CLS] and [SEP]
-            trunc_hidden_states = last_hidden_states[1:-1, :]
+            # calculate BERT last layer embeddings
+            with torch.no_grad():
+                # get the last hidden state from the BERT model
+                last_hidden_states = model(input_ids)[0].squeeze(0).to("cpu")
+                # remove the token embeddings regarding the [CLS] and [SEP]
+                trunc_hidden_states = last_hidden_states[1:-1, :]
 
-        ori2bert_tk_ids = list()
-        idx = 0
-        for tk_start in offsets_mapping[1:-1, 0] == 0:
-            if tk_start:
-                ori2bert_tk_ids.append([idx])
-            else:
-                ori2bert_tk_ids[-1].append(idx)
-            idx += 1
+            ori2bert_tk_ids = list()
+            idx = 0
+            for tk_start in offsets_mapping[1:-1, 0] == 0:
+                if tk_start:
+                    ori2bert_tk_ids.append([idx])
+                else:
+                    ori2bert_tk_ids[-1].append(idx)
+                idx += 1
 
-        emb_list = list()
-        for ids in ori2bert_tk_ids:
-            embeddings = trunc_hidden_states[ids, :]  # first dim could be 1 or n
-            emb_list.append(embeddings.mean(dim=0))
+            emb_list = list()
+            for ids in ori2bert_tk_ids:
+                embeddings = trunc_hidden_states[ids, :]  # first dim could be 1 or n
+                emb_list.append(embeddings.mean(dim=0))
 
-        if prepend_cls_embs:
-            # add back the embedding of [CLS] as the sentence embedding
-            emb_list = [last_hidden_states[0, :]] + emb_list
+            if prepend_cls_embs:
+                # add back the embedding of [CLS] as the sentence embedding
+                emb_list = [last_hidden_states[0, :]] + emb_list
 
-        bert_emb = torch.stack(emb_list)
-        assert not bert_emb.isnan().any(), ValueError("NaN Embeddings!")
-        tk_emb_seq_list.append(bert_emb.detach().cpu())
+            bert_emb = torch.stack(emb_list)
+            assert not bert_emb.isnan().any(), ValueError("NaN Embeddings!")
+            tk_emb_seq_list.append(bert_emb.detach().cpu())
 
     return tk_emb_seq_list
 
@@ -173,50 +174,53 @@ def build_emb_helper(
 
     tk_emb_seq_list = list()
 
-    for tk_seq in tqdm(tk_seq_list):
-        # `substitute_unknown_tokens` should be called outside this function
-        # tk_seq = substitute_unknown_tokens(tk_seq, tokenizer)
-        tokenized_text = tokenizer(tk_seq, is_split_into_words=True)
-        word_ids = tokenizer(tk_seq, is_split_into_words=True).word_ids(batch_index=0)
+    with progress_bar as pbar:
+        for tk_seq in pbar.track(tk_seq_list):
+            # `substitute_unknown_tokens` should be called outside this function
+            # tk_seq = substitute_unknown_tokens(tk_seq, tokenizer)
+            tokenized_text = tokenizer(tk_seq, is_split_into_words=True)
+            word_ids = tokenizer(tk_seq, is_split_into_words=True).word_ids(batch_index=0)
 
-        word_ids_shifted_left = np.asarray([-100] + word_ids[:-1])
-        word_ids = np.asarray(word_ids)
+            word_ids_shifted_left = np.asarray([-100] + word_ids[:-1])
+            word_ids = np.asarray(word_ids)
 
-        is_first_wordpiece = (word_ids_shifted_left != word_ids) & (word_ids != None)
-        word_ids[~is_first_wordpiece] = -100  # could be anything less than 0
+            is_first_wordpiece = (word_ids_shifted_left != word_ids) & (word_ids != None)
+            word_ids[~is_first_wordpiece] = -100  # could be anything less than 0
 
-        # this should not happen
-        if np.setdiff1d(np.arange(len(tk_seq)), word_ids).size > 0:
-            raise ValueError(
-                "Failed to map all tokens to BERT tokens! "
-                "Consider running `substitute_unknown_tokens` before calling this function"
-            )
+            # this should not happen
+            if np.setdiff1d(np.arange(len(tk_seq)), word_ids).size > 0:
+                raise ValueError(
+                    "Failed to map all tokens to BERT tokens! "
+                    "Consider running `substitute_unknown_tokens` before calling this function"
+                )
 
-        ori2bert = list()
-        for idx, word_idx in enumerate(word_ids[1:-1]):  # skip the special tokens
-            if word_idx != -100:
-                ori2bert.append([idx])
-            else:
-                ori2bert[-1].append(idx)
+            ori2bert = list()
+            for idx, word_idx in enumerate(word_ids[1:-1]):  # skip the special tokens
+                if word_idx != -100:
+                    ori2bert.append([idx])
+                else:
+                    ori2bert[-1].append(idx)
 
-        # calculate BERT last layer embeddings
-        with torch.no_grad():
-            # get the last hidden state from the BERT model
-            last_hidden_states = model(torch.tensor([tokenized_text.input_ids], device=device))[0].squeeze(0).to("cpu")
-            # remove the token embeddings regarding the [CLS] and [SEP]
-            trunc_hidden_states = last_hidden_states[1:-1, :]
+            # calculate BERT last layer embeddings
+            with torch.no_grad():
+                # get the last hidden state from the BERT model
+                last_hidden_states = (
+                    model(torch.tensor([tokenized_text.input_ids], device=device))[0].squeeze(0).to("cpu")
+                )
+                # remove the token embeddings regarding the [CLS] and [SEP]
+                trunc_hidden_states = last_hidden_states[1:-1, :]
 
-        emb_list = list()
-        for ids in ori2bert:
-            embeddings = trunc_hidden_states[ids, :]  # first dim could be 1 or n
-            emb_list.append(embeddings.mean(dim=0))
+            emb_list = list()
+            for ids in ori2bert:
+                embeddings = trunc_hidden_states[ids, :]  # first dim could be 1 or n
+                emb_list.append(embeddings.mean(dim=0))
 
-        if prepend_cls_embs:
-            # add back the embedding of [CLS] as the sentence embedding
-            emb_list = [last_hidden_states[0, :]] + emb_list
+            if prepend_cls_embs:
+                # add back the embedding of [CLS] as the sentence embedding
+                emb_list = [last_hidden_states[0, :]] + emb_list
 
-        bert_emb = torch.stack(emb_list)
-        assert not bert_emb.isnan().any(), ValueError("NaN Embeddings!")
-        tk_emb_seq_list.append(bert_emb.detach().cpu())
+            bert_emb = torch.stack(emb_list)
+            assert not bert_emb.isnan().any(), ValueError("NaN Embeddings!")
+            tk_emb_seq_list.append(bert_emb.detach().cpu())
 
     return tk_emb_seq_list

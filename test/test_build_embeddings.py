@@ -3,11 +3,35 @@ from transformers import AutoTokenizer, AutoModel
 from seqlbtoolkit.text import substitute_unknown_tokens
 from seqlbtoolkit.embs import build_emb_helper
 
-tokenizer = AutoTokenizer.from_pretrained('distilbert-base-uncased', add_prefix_space=True)
-model = AutoModel.from_pretrained('distilbert-base-uncased')
+tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased", add_prefix_space=True)
+model = AutoModel.from_pretrained("distilbert-base-uncased")
 
-tk_seq = ["q", "x", "0.64Å", "-1", "represents", "the", "second", "-", "order", "(", "200", ")",
-          "", "reection", "of", "lamellae", "(", "d", "200", "spacing", "x", "9.83Å", ").", "[UNK]"]
+tk_seq = [
+    "q",
+    "x",
+    "0.64Å",
+    "-1",
+    "represents",
+    "the",
+    "second",
+    "-",
+    "order",
+    "(",
+    "200",
+    ")",
+    "",
+    "reection",
+    "of",
+    "lamellae",
+    "(",
+    "d",
+    "200",
+    "spacing",
+    "x",
+    "9.83Å",
+    ").",
+    "[UNK]",
+]
 
 
 # tk_seq = ['The', 'HOMO-LUMO', '(', 'HL', ')', 'gap', 'of', 'each', 'structure', 'calculated', 'using', 'the',
@@ -34,7 +58,6 @@ tk_seq = ["q", "x", "0.64Å", "-1", "represents", "the", "second", "-", "orde
 
 tks = substitute_unknown_tokens(tk_seq, tokenizer)
 embs = build_emb_helper([tks], tokenizer, model)
-
 
 
 print("Test Success!")
