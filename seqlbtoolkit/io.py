@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Optional
 from dataclasses import asdict
 from rich.logging import RichHandler
+from rich.text import Text
 from rich.progress import (
     BarColumn,
     MofNCompleteColumn,
@@ -17,6 +18,9 @@ from rich.progress import (
     TextColumn,
     TimeElapsedColumn,
     TimeRemainingColumn,
+    ProgressColumn,
+    Task,
+    filesize,
 )
 from .utils import deprecated
 
@@ -37,6 +41,26 @@ __all__ = [
 ]
 
 
+class RateColumn(ProgressColumn):
+    """Renders human readable processing rate.
+
+    Reference: https://github.com/Textualize/rich/discussions/2035#discussioncomment-3516405
+    """
+
+    def render(self, task: "Task") -> Text:
+        """Render the speed in iterations per second."""
+        speed = task.finished_speed or task.speed
+        if speed is None:
+            return Text("", style="progress.percentage")
+        unit, suffix = filesize.pick_unit_and_suffix(
+            int(speed),
+            ["", "×10³", "×10⁶", "×10⁹", "×10¹²"],
+            1000,
+        )
+        data_speed = speed / unit
+        return Text(f"{data_speed:.1f}{suffix} it/s", style="progress.percentage")
+
+
 """
 Define custom progress bar.
 Usage:
@@ -49,13 +73,17 @@ with progress_bar as p:
 ```
 """
 progress_bar = Progress(
+    TextColumn("[progress.description]{task.description}"),
     TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
     BarColumn(),
     MofNCompleteColumn(),
-    TextColumn("•"),
+    TextColumn("["),
     TimeElapsedColumn(),
-    TextColumn("•"),
+    TextColumn("<"),
     TimeRemainingColumn(),
+    TextColumn(","),
+    RateColumn(),
+    TextColumn("]"),
 )
 
 
