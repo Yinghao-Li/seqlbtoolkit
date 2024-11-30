@@ -1,71 +1,47 @@
 import os
+import os.path as osp
 import re
-import tqdm
 import json
 import shutil
 import logging
+from rich.logging import RichHandler
 from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 
-class TqdmLoggingHandler(logging.Handler):
-    """
-    Don't let logger print interfere with tqdm progress bar
-    """
-
-    def __init__(self, level=logging.NOTSET):
-        super().__init__(level)
-
-    def emit(self, record):
-        try:
-            msg = self.format(record)
-            tqdm.tqdm.write(msg)
-            self.flush()
-        except Exception:
-            self.handleError(record)
-
-
-# noinspection PyArgumentList
 def set_logging(log_path: Optional[str] = None):
-    """
-    setup logging
-    Last modified: 07/20/21
+    """Sets up logging format and file handler.
 
-    Parameters
-    ----------
-    log_dir: where to save logging file. Leave None to save no log files
-
-    Returns
-    -------
-    None
+    Args:
+        log_path (Optional[str]): Path where to save the logging file. If None, no log file is saved.
     """
-    if log_path and log_path != "null":
-        log_path = os.path.abspath(log_path)
-        if not os.path.isdir(os.path.split(log_path)[0]):
-            os.makedirs(os.path.abspath(os.path.normpath(os.path.split(log_path)[0])))
-        if os.path.isfile(log_path):
+    rh = RichHandler()
+    rh.setFormatter(logging.Formatter("%(message)s", datefmt="[%m/%d %X]"))
+
+    if log_path and log_path != "disabled":
+        log_path = osp.abspath(log_path)
+        if not osp.isdir(osp.split(log_path)[0]):
+            os.makedirs(osp.abspath(osp.normpath(osp.split(log_path)[0])))
+        if osp.isfile(log_path):
             os.remove(log_path)
+
+        file_handler = logging.FileHandler(filename=log_path)
+        file_handler.setLevel(logging.DEBUG)
+
         logging.basicConfig(
-            format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
-            datefmt="%m/%d/%Y %H:%M:%S",
-            level=logging.INFO,
-            handlers=[
-                # logging.StreamHandler(sys.stdout),
-                logging.FileHandler(log_path),
-                TqdmLoggingHandler(),
-            ],
+            level="NOTSET",
+            format="%(asctime)s %(levelname)-8s %(message)-80s     @ %(pathname)-s:%(lineno)d",
+            datefmt="[%m/%d %X]",
+            handlers=[file_handler, rh],
         )
+
     else:
         logging.basicConfig(
-            format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
-            datefmt="%m/%d/%Y %H:%M:%S",
-            level=logging.INFO,
-            handlers=[
-                # logging.StreamHandler(sys.stdout),
-                TqdmLoggingHandler()
-            ],
+            datefmt="[%m/%d %X]",
+            level="NOTSET",
+            handlers=[rh],
         )
 
     return None
@@ -113,7 +89,7 @@ def init_dir(directory: str, clear_original_content: Optional[bool] = True):
 
     if clear_original_content:
         remove_dir(directory)
-    os.makedirs(os.path.normpath(directory), exist_ok=True)
+    os.makedirs(osp.normpath(directory), exist_ok=True)
     return None
 
 
@@ -135,7 +111,7 @@ def save_json(obj, path: str, collapse_level: Optional[int] = None, disable_cont
     -------
     None
     """
-    file_dir = os.path.dirname(os.path.normpath(path))
+    file_dir = osp.dirname(osp.normpath(path))
     if file_dir:
         os.makedirs(file_dir, exist_ok=True)
 
