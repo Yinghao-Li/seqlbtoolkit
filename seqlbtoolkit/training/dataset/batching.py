@@ -5,24 +5,25 @@ from typing import Optional
 class Batch(dict):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._tensor_members = {}
+        self._tensor_keys = list()
         for k, v in self.items():
             self.register_tensor_members(k, v)
 
     def register_tensor_members(self, k, v):
         if isinstance(v, torch.Tensor) or callable(getattr(v, "to", None)):
-            self._tensor_members[k] = v
+            self._tensor_keys.append(k)
 
     def to(self, device):
-        for k in self._tensor_members:
+        for k in self._tensor_keys:
             self[k] = self[k].to(device)
         return self
 
-    def asinput(self):
-        return self._tensor_members
+    @property
+    def tensors(self):
+        return {k: self[k] for k in self._tensor_keys}
 
     def __len__(self):
-        return len(next(iter(self._tensor_members.values())))
+        return len(self[self._tensor_keys[0]]) if self._tensor_keys else 0
 
     def __getattr__(self, name):
         if name in self:
