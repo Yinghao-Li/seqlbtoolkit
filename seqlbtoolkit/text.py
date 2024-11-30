@@ -5,12 +5,11 @@ import operator
 
 import numpy as np
 
-from typing import List, Optional, Union
 
 from .data import merge_list_of_lists
 
 
-def format_text(text, remove_ref: Optional[bool] = False, remove_emoj: Optional[bool] = False):
+def format_text(text, remove_ref: bool = False, remove_emoj: bool = False):
     """
     Normalize text and transform some unicode characters into ascii
 
@@ -174,67 +173,12 @@ def substring_mapping(text: str, mapping_dict: dict):
     return text
 
 
-def split_overlength_bert_input_sequence_legacy(tks: List[str], tokenizer, max_seq_length: Optional[int] = 512):
-    """
-    Break the sentences that exceeds the maximum BERT length (deprecated)
-
-    Parameters
-    ----------
-    tks: A list of tokens that are in the original token format (instead of BERT BPE format)
-    tokenizer: BERT tokenizer
-    max_seq_length: maximum BERT length
-
-    Returns
-    -------
-    1. sent_tks_list: a list of separated text
-    2. the lengths of the broken text
-    3. a list of the indices of the separated text
-    """
-    from nltk import word_tokenize, sent_tokenize
-
-    # Deal with sentences that are longer than 512 BERT tokens
-    if len(tokenizer.tokenize(" ".join(tks), add_special_tokens=True)) >= max_seq_length:
-        sent_tks_list = [tks]
-        bert_length_list = [len(tokenizer.tokenize(" ".join(t), add_special_tokens=True)) for t in sent_tks_list]
-
-        while (np.asarray(bert_length_list) >= max_seq_length).any():
-            sep_sent_tks_list = list()
-
-            for tks_list, bert_len in zip(sent_tks_list, bert_length_list):
-                if bert_len < max_seq_length:
-                    sep_sent_tks_list.append(tks_list)
-                    continue
-
-                sep_sent_list = sent_tokenize(" ".join(tks_list))
-
-                sent_lens = list()
-                for sep_sent in sep_sent_list:
-                    sent_lens.append(len(word_tokenize(sep_sent)))
-                end_ids = [np.sum(sent_lens[:i]) for i in range(1, len(sent_lens) + 1)]
-
-                # try to separate sentences as evenly as possible
-                halfway_idx = np.argmin((np.array(end_ids) - len(tks_list) / 2) ** 2)
-                sep_sent_tks_list.append(tks_list[: end_ids[halfway_idx]])  # split 1
-                sep_sent_tks_list.append(tks_list[end_ids[halfway_idx] :])  # split 2
-
-            sent_tks_list = sep_sent_tks_list
-            bert_length_list = [len(tokenizer.tokenize(" ".join(t), add_special_tokens=True)) for t in sent_tks_list]
-
-        sent_lengths = [len(s) for s in sent_tks_list]
-        assert np.sum(sent_lengths) == len(tks), ValueError(f"Text splitting failed: {tks} ---> {sent_tks_list}")
-
-        return sent_tks_list, sent_lengths, np.arange(len(sent_tks_list))
-
-    else:
-        return [tks], [len(tks)], np.array([0], dtype=int)
-
-
 def split_overlength_bert_input_sequence(
-    sequence: Union[str, List[str]],
+    sequence: str | list[str],
     tokenizer,
-    max_seq_length: Optional[int] = 512,
-    sent_lens: Optional[List[int]] = None,
-) -> List[List[str]]:
+    max_seq_length: int = 512,
+    sent_lens: list[int] = None,
+) -> list[list[str]]:
     """
     Break the sentences that exceeds the maximum BERT length
 
@@ -317,8 +261,7 @@ def split_overlength_bert_input_sequence(
     return split_tks_seq_list
 
 
-# noinspection PyTypeChecker,PyComparisonWithNone
-def substitute_unknown_tokens(tk_seq: List[str], tokenizer) -> List[str]:
+def substitute_unknown_tokens(tk_seq: list[str], tokenizer) -> list[str]:
     """
     Substitute the tokens in tk_seq unknown to the tokenizer by `unk_tag`
 
