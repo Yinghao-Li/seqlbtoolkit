@@ -6,8 +6,6 @@ import itertools
 import numpy as np
 
 from typing import List, Dict, Tuple, Optional, Union
-from spacy_alignments import get_alignments
-from textspan import align_spans, get_original_spans
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +21,7 @@ def respan(src_tokens: List[str], tgt_tokens: List[str], src_span: Union[List[tu
 
     :return: a list of transferred span tuples.
     """
+    from spacy_alignments import get_alignments
 
     s2t, _ = get_alignments(src_tokens, tgt_tokens)
 
@@ -67,6 +66,7 @@ def respan_text(src_txt: str, tgt_txt: str, src_span: Union[List[tuple], Dict[Tu
 
     :return: a list of transferred span tuples.
     """
+    from textspan import align_spans
 
     if isinstance(src_span, list):
         tgt_spans = align_spans(src_span, src_txt, tgt_txt)
@@ -93,6 +93,8 @@ def txt_to_token_span(tokens: List[str], text: str, txt_spans: Union[List[tuple]
     :param txt_spans: text spans tuples: (start, end, ...)
     :return: a list of transferred span tuples.
     """
+    from textspan import get_original_spans
+
     token_indices = get_original_spans(tokens, text)
 
     try:
@@ -148,6 +150,8 @@ def token_to_txt_span(tokens: List[str], text: str, token_spans: Union[List[tupl
     :param token_spans: text spans tuples: (start, end, ...)
     :return: a list of transferred span tuples.
     """
+    from textspan import get_original_spans
+
     token_indices = get_original_spans(tokens, text)
     try:
         token_indices = [item[0] for item in token_indices]

@@ -2,12 +2,11 @@ import torch
 from typing import Optional
 
 
-class Batch:
+class Batch(dict):
     def __init__(self, **kwargs):
-        super().__init__()
-        self._tensor_members = dict()
-        for k, v in kwargs.items():
-            setattr(self, k, v)
+        super().__init__(**kwargs)
+        self._tensor_members = {}
+        for k, v in self.items():
             self.register_tensor_members(k, v)
 
     def register_tensor_members(self, k, v):
@@ -15,12 +14,30 @@ class Batch:
             self._tensor_members[k] = v
 
     def to(self, device):
-        for k, v in self._tensor_members.items():
-            setattr(self, k, v.to(device))
+        for k in self._tensor_members:
+            self[k] = self[k].to(device)
         return self
 
+    def asinput(self):
+        return self._tensor_members
+
     def __len__(self):
-        return len(tuple(self._tensor_members.values())[0])
+        return len(next(iter(self._tensor_members.values())))
+
+    def __getattr__(self, name):
+        if name in self:
+            return self[name]
+        elif name.startswith("_"):
+            return super().__getattribute__(name)
+        else:
+            raise AttributeError(f"'Batch' object has no attribute '{name}'")
+
+    def __setattr__(self, name, value):
+        if name.startswith("_"):
+            super().__setattr__(name, value)
+        else:
+            self[name] = value
+            self.register_tensor_members(name, value)
 
 
 def pack_instances(**kwargs) -> list[dict]:
