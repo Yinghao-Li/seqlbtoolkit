@@ -85,7 +85,7 @@ def respan_text(src_txt: str, tgt_txt: str, src_span: Union[List[tuple], Dict[Tu
     return tgt_spans
 
 
-def txt_to_token_span(tokens: List[str], text: str, txt_spans: Union[List[tuple], Dict[Tuple[int, int], str]]):
+def txt_to_token_span(tokens: list[str], text: str, txt_spans: list[tuple] | dict[tuple[int, int], str]):
     """
     Transfer text-domain spans to token-domain spans
     :param tokens: tokens
@@ -97,10 +97,22 @@ def txt_to_token_span(tokens: List[str], text: str, txt_spans: Union[List[tuple]
 
     token_indices = get_original_spans(tokens, text)
 
-    try:
-        token_indices = [item[0] for item in token_indices]
-    except IndexError as err:
-        logger.error(f"Encountered token(s) not in original text: {err}")
+    token_ids = list()
+    for i, token_idx in enumerate(token_indices):
+        if token_idx:
+            token_ids.append(token_idx[0])
+        else:
+            logger.warning(
+                f"token {tokens[i]} not found in text, estimated position: {(token_ids[-1][-1], token_ids[-1][-1] + len(tokens[i]))}"
+            )
+            if token_ids:
+                start = token_ids[-1][-1]
+            else:
+                start = 0
+
+            end = start + len(tokens[i])
+            token_ids.append((start, end))
+    token_indices = token_ids
 
     if isinstance(txt_spans, list):
         tgt_spans = list()
@@ -153,10 +165,24 @@ def token_to_txt_span(tokens: List[str], text: str, token_spans: Union[List[tupl
     from textspan import get_original_spans
 
     token_indices = get_original_spans(tokens, text)
-    try:
-        token_indices = [item[0] for item in token_indices]
-    except IndexError as e:
-        logger.error(f"Encountered token(s) not in original text: {e}")
+
+    token_ids = list()
+    for i, token_idx in enumerate(token_indices):
+        if token_idx:
+            token_ids.append(token_idx[0])
+        else:
+            logger.warning(
+                f"token {tokens[i]} not found in text, estimated position: {(token_ids[-1][-1], token_ids[-1][-1] + len(tokens[i]))}"
+            )
+            if token_ids:
+                start = token_ids[-1][-1]
+            else:
+                start = 0
+
+            end = start + len(tokens[i])
+            token_ids.append((start, end))
+    token_indices = token_ids
+
     if isinstance(token_spans, dict):
         tgt_spans = dict()
         for token_span, value in token_spans.items():
