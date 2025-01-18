@@ -10,79 +10,110 @@ from typing import List, Dict, Tuple, Optional, Union
 logger = logging.getLogger(__name__)
 
 
-def respan(src_tokens: List[str], tgt_tokens: List[str], src_span: Union[List[tuple], Dict[Tuple[int, int], str]]):
+def respan(
+    source_tokens: list[str],
+    target_tokens: list[str],
+    source_spans: list[tuple[int, int]] | dict[tuple[int, int], str],
+) -> list[tuple[int, int]] | dict[tuple[int, int], str]:
     """
-    transfer original spans to target spans
+    Transfer original spans from the source tokens to the target tokens.
 
-    :param src_tokens: source tokens
-    :param tgt_tokens: target tokens
-    :param src_span: a list of span tuples. The first element in the tuple
-    should be the start index and the second should be the end index
+    :param source_tokens: A list of source tokens.
+    :param target_tokens: A list of target tokens.
+    :param source_spans: Either a list of (start_index, end_index) tuples
+                         or a dictionary mapping (start_index, end_index)
+                         tuples to labels.
 
-    :return: a list of transferred span tuples.
+    :return: A list or dictionary of transferred spans, mapped into target_tokens positions.
     """
     from spacy_alignments import get_alignments
 
-    s2t, _ = get_alignments(src_tokens, tgt_tokens)
+    # Obtain the alignment mappings between source and target tokens
+    source_to_target, _ = get_alignments(source_tokens, target_tokens)
 
-    if isinstance(src_span, list):
-        tgt_spans = list()
-        for span in src_span:
-            start = s2t[span[0]][0]
-            if span[1] < len(s2t):
-                end = s2t[span[1]][-1]
-            else:
-                end = s2t[-1][-1]
-            if end == start:
-                end += 1
-            tgt_spans.append((start, end))
-
-    elif isinstance(src_span, dict):
-        tgt_spans = dict()
-        for span, lb in src_span.items():
-            start = s2t[span[0]][0]
-            if span[1] < len(s2t):
-                end = s2t[span[1]][-1]
-            else:
-                end = s2t[-1][-1]
-            if end == start:
-                end += 1
-            tgt_spans[(start, end)] = lb
-
+    # Decide how to iterate: list or dictionary
+    if isinstance(source_spans, dict):
+        spans_iter = source_spans.items()  # ( (start_idx, end_idx), label )
+        is_dict = True
+    elif isinstance(source_spans, list):
+        # Generate a pseudo-iterator of the form ( (start_idx, end_idx), None )
+        # so we can treat it similarly to the dict variant
+        spans_iter = (((start_idx, end_idx), None) for (start_idx, end_idx) in source_spans)
+        is_dict = False
     else:
-        raise TypeError("Undefined type for `src_span`")
+        raise TypeError("`source_spans` must be either a list of tuples or a dict of tuple->label.")
 
-    return tgt_spans
+    # Prepare the output structure
+    target_spans = dict() if is_dict else list()
+
+    # Process each span in source_spans
+    for (start_idx, end_idx), label in spans_iter:
+
+        # 1) Determine the start index in the target
+        start_in_target = source_to_target[start_idx][0]
+
+        # 2) Determine the end index in the target
+        if end_idx < len(source_to_target):
+            if source_to_target[end_idx]:
+                end_in_target = source_to_target[end_idx][-1]
+            else:
+                # Backtrack to find a valid alignment
+                backtrack_idx = end_idx
+                while not source_to_target[backtrack_idx] and backtrack_idx > start_in_target:
+                    backtrack_idx -= 1
+                end_in_target = source_to_target[backtrack_idx][-1]
+        else:
+            # If end index exceeds available alignments
+            end_in_target = source_to_target[-1][-1]
+
+        # Make sure the resulting span has non-zero length
+        if end_in_target == start_in_target:
+            end_in_target += 1
+
+        # 3) Store results
+        if is_dict:
+            target_spans[(start_in_target, end_in_target)] = label
+        else:
+            target_spans.append((start_in_target, end_in_target))
+
+    return target_spans
 
 
-def respan_text(src_txt: str, tgt_txt: str, src_span: Union[List[tuple], Dict[Tuple[int, int], str]]):
+def respan_text(
+    source_text: str,
+    target_text: str,
+    source_spans: list[tuple[int, int]] | dict[tuple[int, int], str],
+) -> list[tuple[int, int]] | dict[tuple[int, int], str]:
     """
-    transfer original spans to target spans
+    Transfer original spans from the source text to the target text.
 
-    :param src_txt: source txt
-    :param tgt_txt: target txt
-    :param src_span: a list of span tuples. The first element in the tuple
-    should be the start index and the second should be the end index
+    :param source_text: The original source text.
+    :param target_text: The target text to which spans will be mapped.
+    :param source_spans: A list of (start_index, end_index) tuples or a
+                         dictionary mapping (start_index, end_index)
+                         tuples to labels.
 
-    :return: a list of transferred span tuples.
+    :return: A list or dictionary of transferred spans.
     """
     from textspan import align_spans
 
-    if isinstance(src_span, list):
-        tgt_spans = align_spans(src_span, src_txt, tgt_txt)
-        tgt_spans = [s[0] for s in tgt_spans]
+    if isinstance(source_spans, list):
+        # Align the spans (list case)
+        aligned_spans = align_spans(source_spans, source_text, target_text)
+        target_spans = [span_alignment[0] for span_alignment in aligned_spans]
 
-    elif isinstance(src_span, dict):
-        spans = list(src_span.keys())
-        ent_types = list(src_span.values())
+    elif isinstance(source_spans, dict):
+        # Align the spans (dictionary case)
+        span_list = list(source_spans.keys())
+        labels_list = list(source_spans.values())
 
-        tgt_spans = align_spans(spans, src_txt, tgt_txt)
-        tgt_spans = {s[0]: ent for s, ent in zip(tgt_spans, ent_types)}
+        aligned_spans = align_spans(span_list, source_text, target_text)
+        target_spans = {aligned_span[0]: label for aligned_span, label in zip(aligned_spans, labels_list)}
 
     else:
-        raise TypeError("Undefined type for `src_span`")
+        raise TypeError("`source_spans` must be either a list of tuples or a dictionary.")
 
-    return tgt_spans
+    return target_spans
 
 
 def txt_to_token_span(tokens: list[str], text: str, txt_spans: list[tuple] | dict[tuple[int, int], str]):
