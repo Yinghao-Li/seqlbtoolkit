@@ -59,7 +59,7 @@ def respan(
             else:
                 # Backtrack to find a valid alignment
                 backtrack_idx = end_idx
-                while not source_to_target[backtrack_idx] and backtrack_idx > start_in_target:
+                while not source_to_target[backtrack_idx] and backtrack_idx > start_idx:
                     backtrack_idx -= 1
                 end_in_target = source_to_target[backtrack_idx][-1]
         else:
