@@ -1,5 +1,7 @@
 import os
 import os.path as osp
+import sys
+import __main__
 import re
 import json
 import yaml
@@ -40,6 +42,28 @@ __all__ = [
     "save_yaml",
     "dumps_yaml",
 ]
+
+
+def get_runtime():
+    if "google.colab" in sys.modules:
+        return "Google Colab"
+    elif "ipykernel" in sys.modules:
+        if "jupyter" in sys.modules:
+            return "JupyterLab"
+        else:
+            return "Jupyter Notebook"
+    elif "win32" in sys.platform:
+        if "CMDEXTVERSION" in os.environ:
+            return "Windows Command Prompt"
+        else:
+            return "Windows PowerShell"
+    elif "darwin" in sys.platform:
+        return "MacOS Terminal"
+    else:
+        if hasattr(__main__, "__file__"):
+            return "Linux Terminal"
+        else:
+            return "Interactive Python Shell"
 
 
 class RateColumn(ProgressColumn):
@@ -112,8 +136,11 @@ def set_logging(log_path: Optional[str] = None, level: str = "NOTSET"):
     Args:
         log_path (Optional[str]): Path to save the logging file. If None, no log file is saved.
     """
-    rh = RichHandler()
-    rh.setFormatter(logging.Formatter("%(message)s", datefmt="[%m/%d %X]"))
+    if get_runtime() in ["Google Colab", "JupyterLab", "Jupyter Notebook"]:
+        rh = logging.StreamHandler(sys.stdout)
+    else:
+        rh = RichHandler()
+        rh.setFormatter(logging.Formatter("%(message)s", datefmt="[%m/%d %X]"))
 
     if log_path:
         log_path = osp.abspath(log_path)
@@ -133,11 +160,15 @@ def set_logging(log_path: Optional[str] = None, level: str = "NOTSET"):
         )
 
     else:
-        logging.basicConfig(
-            datefmt="[%m/%d %X]",
-            level=level,
-            handlers=[rh],
-        )
+        kwargs = {
+            "level": level,
+            "datefmt": "[%m/%d %X]",
+            "handlers": [rh],
+        }
+        if get_runtime() in ["Google Colab", "JupyterLab", "Jupyter Notebook"]:
+            kwargs["format"] = "%(asctime)s - %(levelname)s -   %(message)s"
+
+        logging.basicConfig(**kwargs)
 
     return None
 
