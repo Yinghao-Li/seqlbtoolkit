@@ -5,8 +5,6 @@ import logging
 import itertools
 import numpy as np
 
-from typing import List, Dict, Tuple, Optional, Union
-
 logger = logging.getLogger(__name__)
 
 
@@ -58,6 +56,7 @@ def respan(
             while not source_to_target[backtrack_idx] and backtrack_idx > 0:
                 backtrack_idx -= 1
             start_in_target = source_to_target[backtrack_idx][0] + 1 if source_to_target[backtrack_idx] else 0
+            logger.debug(f"{source_tokens[start_idx]} not found in target, estimated position: {start_in_target}")
 
         # 2) Determine the end index in the target
         if end_idx < len(source_to_target):
@@ -71,6 +70,7 @@ def respan(
                 end_in_target = (
                     source_to_target[backtrack_idx][-1] if source_to_target[backtrack_idx] else start_in_target
                 )
+                logger.debug(f"{source_tokens[end_idx]} not found in target, estimated position: {end_in_target}")
         else:
             # If end index exceeds available alignments
             end_in_target = source_to_target[-1][-1]
@@ -142,7 +142,7 @@ def txt_to_token_span(tokens: list[str], text: str, txt_spans: list[tuple] | dic
         if token_idx:
             token_ids.append(token_idx[0])
         else:
-            logger.warning(
+            logger.debug(
                 f"token {tokens[i]} not found in text, estimated position: {(token_ids[-1][-1], token_ids[-1][-1] + len(tokens[i]))}"
             )
             if token_ids:
@@ -194,7 +194,7 @@ def txt_to_token_span(tokens: list[str], text: str, txt_spans: list[tuple] | dic
     return tgt_spans
 
 
-def token_to_txt_span(tokens: List[str], text: str, token_spans: Union[List[tuple], dict]) -> Union[List[tuple], dict]:
+def token_to_txt_span(tokens: list[str], text: str, token_spans: list[tuple] | dict) -> list[tuple] | dict:
     """
     Transfer text-domain spans to token-domain spans
     :param tokens: tokens
@@ -211,7 +211,7 @@ def token_to_txt_span(tokens: List[str], text: str, token_spans: Union[List[tupl
         if token_idx:
             token_ids.append(token_idx[0])
         else:
-            logger.warning(
+            logger.debug(
                 f"token {tokens[i]} not found in text, estimated position: {(token_ids[-1][-1], token_ids[-1][-1] + len(tokens[i]))}"
             )
             if token_ids:
@@ -240,7 +240,7 @@ def token_to_txt_span(tokens: List[str], text: str, token_spans: Union[List[tupl
     return tgt_spans
 
 
-def span_to_label(labeled_spans: Dict[Tuple[int, int], str], tokens: List[str]) -> List[str]:
+def span_to_label(labeled_spans: dict[tuple[int, int], str], tokens: list[str]) -> list[str]:
     """
     Convert entity spans to labels
 
@@ -269,7 +269,7 @@ def span_to_label(labeled_spans: Dict[Tuple[int, int], str], tokens: List[str]) 
     return labels
 
 
-def label_to_span(labels: List[str], scheme: Optional[str] = "BIO") -> dict:
+def label_to_span(labels: list[str], scheme: str = "BIO") -> dict:
     """
     convert labels to spans
     :param labels: a list of labels
@@ -332,7 +332,7 @@ def label_to_span(labels: List[str], scheme: Optional[str] = "BIO") -> dict:
     return labeled_spans
 
 
-def span_dict_to_list(span_dict: Dict[Tuple[int], str]):
+def span_dict_to_list(span_dict: dict[tuple[int], str]):
     """
     convert entity label span dictionaries to span list
 
@@ -350,7 +350,7 @@ def span_dict_to_list(span_dict: Dict[Tuple[int], str]):
     return span_list
 
 
-def span_list_to_dict(span_list: List[list]) -> Dict[Tuple[int, int], Union[str, tuple]]:
+def span_list_to_dict(span_list: list[list]) -> dict[tuple[int, int], str | tuple]:
     """
     convert entity label span list to span dictionaries
 
@@ -385,7 +385,7 @@ def one_hot(x, n_class=None):
     return one_hot_vec
 
 
-def probs_to_ids(probs: Union[torch.Tensor, np.ndarray]):
+def probs_to_ids(probs: torch.Tensor | np.ndarray):
     """
     Convert label probability labels to index
 
@@ -403,14 +403,14 @@ def probs_to_ids(probs: Union[torch.Tensor, np.ndarray]):
     return lb_ids
 
 
-def ids_to_lbs(ids: Union[torch.Tensor, np.ndarray], label_types: List[str]):
+def ids_to_lbs(ids: torch.Tensor | np.ndarray, label_types: list[str]):
     if isinstance(ids, torch.Tensor):
         ids = ids.detach().cpu().numpy()
     np_map = np.vectorize(lambda lb: label_types[lb])
     return np_map(ids)
 
 
-def probs_to_lbs(probs: Union[torch.Tensor, np.ndarray], label_types: List[str]):
+def probs_to_lbs(probs: torch.Tensor | np.ndarray, label_types: list[str]):
     """
     Convert label probability labels to index
 
@@ -428,17 +428,17 @@ def probs_to_lbs(probs: Union[torch.Tensor, np.ndarray], label_types: List[str])
     return np_map(lb_ids)
 
 
-def entity_to_bio_labels(entities: List[str]):
+def entity_to_bio_labels(entities: list[str]):
     bio_labels = ["O"] + ["%s-%s" % (bi, label) for label in entities for bi in "BI"]
     return bio_labels
 
 
-def merge_list_of_lists(lists: List[list]):
+def merge_list_of_lists(lists: list[list]):
     merged = list(itertools.chain.from_iterable(lists))
     return merged
 
 
-def split_list_by_lengths(input_list: list, lengths: List[int]) -> List[list]:
+def split_list_by_lengths(input_list: list, lengths: list[int]) -> list[list]:
     """
     Split a list into several lists given the lengths of each target list
 
@@ -459,9 +459,7 @@ def split_list_by_lengths(input_list: list, lengths: List[int]) -> List[list]:
     return output
 
 
-def sort_tuples_by_element_idx(
-    tups: List[tuple], idx: Optional[int] = 0, reverse: Optional[bool] = False
-) -> List[tuple]:
+def sort_tuples_by_element_idx(tups: list[tuple], idx: int = 0, reverse: bool = False) -> list[tuple]:
     """
     Function to sort the list of tuples by the second item
 
@@ -480,7 +478,7 @@ def sort_tuples_by_element_idx(
     return tup_
 
 
-def merge_overlapped_spans(spans: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+def merge_overlapped_spans(spans: list[tuple[int, int]]) -> list[tuple[int, int]]:
     """
     Merge overlapped spans
 
@@ -519,7 +517,7 @@ def rand_argmax(x, **kwargs):
     return np.argmax(np.random.random(x.shape) * (x == np.amax(x, **kwargs, keepdims=True)), **kwargs)
 
 
-def lengths_to_mask(lengths: Union[torch.Tensor, List[int]]):
+def lengths_to_mask(lengths: torch.Tensor | list[int]):
     """
     Convert sequence lengths to boolean mask.
 
