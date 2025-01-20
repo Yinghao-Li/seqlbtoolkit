@@ -50,7 +50,14 @@ def respan(
     for (start_idx, end_idx), label in spans_iter:
 
         # 1) Determine the start index in the target
-        start_in_target = source_to_target[start_idx][0]
+        if source_to_target[start_idx]:
+            start_in_target = source_to_target[start_idx][0]
+        else:
+            # Backtrack to find a valid alignment
+            backtrack_idx = start_idx
+            while not source_to_target[backtrack_idx] and backtrack_idx > 0:
+                backtrack_idx -= 1
+            start_in_target = source_to_target[backtrack_idx][0] + 1 if source_to_target[backtrack_idx] else 0
 
         # 2) Determine the end index in the target
         if end_idx < len(source_to_target):
