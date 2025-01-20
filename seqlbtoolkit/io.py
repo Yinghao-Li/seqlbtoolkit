@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "progress_bar",
+    "ProgressBar",
     "set_logging",
     "log_args",
     "remove_dir",
@@ -85,6 +86,24 @@ progress_bar = Progress(
     RateColumn(),
     TextColumn("]"),
 )
+
+
+class ProgressBar(Progress):
+    def __init__(self, **kwargs):
+        super().__init__(
+            TextColumn("[progress.description]{task.description}"),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            TextColumn("["),
+            TimeElapsedColumn(),
+            TextColumn("<"),
+            TimeRemainingColumn(),
+            TextColumn(","),
+            RateColumn(),
+            TextColumn("]"),
+            **kwargs,
+        )
 
 
 def set_logging(log_path: Optional[str] = None, level: str = "NOTSET"):

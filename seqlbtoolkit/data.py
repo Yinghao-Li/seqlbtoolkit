@@ -68,7 +68,9 @@ def respan(
                 backtrack_idx = end_idx
                 while not source_to_target[backtrack_idx] and backtrack_idx > start_idx:
                     backtrack_idx -= 1
-                end_in_target = source_to_target[backtrack_idx][-1]
+                end_in_target = (
+                    source_to_target[backtrack_idx][-1] if source_to_target[backtrack_idx] else start_in_target
+                )
         else:
             # If end index exceeds available alignments
             end_in_target = source_to_target[-1][-1]
