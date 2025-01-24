@@ -16,7 +16,7 @@ from rich.text import Text
 from rich.progress import (
     BarColumn,
     MofNCompleteColumn,
-    Progress,
+    Progress as RichProgress,
     TextColumn,
     TimeElapsedColumn,
     TimeRemainingColumn,
@@ -24,6 +24,7 @@ from rich.progress import (
     Task,
     filesize,
 )
+from tqdm.auto import tqdm
 from .utils import deprecated
 
 logger = logging.getLogger(__name__)
@@ -97,7 +98,7 @@ with progress_bar as p:
         pass
 ```
 """
-progress_bar = Progress(
+progress_bar = RichProgress(
     TextColumn("[progress.description]{task.description}"),
     TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
     BarColumn(),
@@ -112,7 +113,7 @@ progress_bar = Progress(
 )
 
 
-class ProgressBar(Progress):
+class Progress(RichProgress):
     def __init__(self, **kwargs):
         super().__init__(
             TextColumn("[progress.description]{task.description}"),
@@ -128,6 +129,41 @@ class ProgressBar(Progress):
             TextColumn("]"),
             **kwargs,
         )
+
+
+class ProgressBar:
+    def __init__(self, type: str = "auto", total: float = 100, desc: str = "", transient: bool = False, **kwargs):
+        assert type in ["auto", "rich", "tqdm"], "Invalid progress bar type. Please choose from 'auto', 'rich', 'tqdm'."
+        self.type = type
+
+        if type == "auto":
+            if get_runtime() in ["Google Colab", "JupyterLab", "Jupyter Notebook"]:
+                self.type = "rich"
+            else:
+                self.type = "tqdm"
+
+        if self.type == "rich":
+            pbar = Progress(transient=transient, **kwargs)
+            task_id = pbar.add_task(desc, total=total)
+
+        else:
+            # Fallback or explicitly "tqdm"
+            pbar = tqdm(total=total, desc=desc)
+            task_id = None
+
+        self.pbar = pbar
+        self.task_id = task_id
+
+    def update(self, advance: int = 1):
+        """
+        Update the progress bar with the specified advance amount.
+        """
+        if self.task_id is not None:
+            self.pbar.update(self.task_id, advance=advance)
+        else:
+            self.pbar.update(advance)
+
+        return None
 
 
 def set_logging(log_path: Optional[str] = None, level: str = "NOTSET"):
