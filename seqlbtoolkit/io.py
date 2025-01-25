@@ -137,9 +137,8 @@ class ProgressBar:
         self.type = type
 
         if type == "auto":
+            self.type = "rich"
             if get_runtime() in ["Google Colab", "JupyterLab", "Jupyter Notebook"]:
-                self.type = "rich"
-            else:
                 self.type = "tqdm"
 
         if self.type == "rich":
@@ -164,6 +163,12 @@ class ProgressBar:
             self.pbar.update(advance)
 
         return None
+
+    def __enter__(self):
+        return self.pbar.__enter__()
+
+    def __exit__(self, *args):
+        return self.pbar.__exit__(*args)
 
 
 def set_logging(log_path: Optional[str] = None, level: str = "NOTSET"):
