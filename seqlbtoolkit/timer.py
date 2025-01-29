@@ -1,6 +1,6 @@
 """
 # Author: Yinghao Li
-# Modified: January 24th, 2025
+# Modified: January 29th, 2025
 # ---------------------------------------
 # Description:
 
@@ -64,6 +64,39 @@ class Timer:
         return None
 
     @property
+    def time(self):
+        """Return the last recorded elapsed time.
+
+        Returns
+        -------
+        float
+            The last recorded elapsed time.
+        """
+        return self.time_elapsed
+
+    @property
+    def average_time(self):
+        """Return the average elapsed time.
+
+        Returns
+        -------
+        float or None
+            The average elapsed time if cache is not empty, otherwise None.
+        """
+        return np.mean(self.time_elapsed_cache) if not self.is_empty else None
+
+    @property
+    def total_time(self):
+        """Return the total elapsed time.
+
+        Returns
+        -------
+        float or None
+            The total elapsed time if cache is not empty, otherwise None.
+        """
+        return np.sum(self.time_elapsed_cache) if not self.is_empty else None
+
+    @property
     def is_empty(self):
         """Check if the cache is empty.
 
@@ -73,18 +106,6 @@ class Timer:
             True if cache is empty, otherwise False.
         """
         return True if not self.time_elapsed_cache else False
-
-    @property
-    def time_elapsed_avg(self):
-        """
-        Calculate the average of elapsed times in the cache.
-
-        Returns
-        -------
-        float or None
-            The average elapsed time if cache is not empty, otherwise None.
-        """
-        return np.mean(self.time_elapsed_cache) if not self.is_empty else None
 
     def on_measurement_start(self):
         """
