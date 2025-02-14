@@ -26,6 +26,7 @@ from rich.progress import (
 )
 from tqdm.auto import tqdm
 from .utils import deprecated
+from .timer import Timer
 
 logger = logging.getLogger(__name__)
 
@@ -87,32 +88,6 @@ class RateColumn(ProgressColumn):
         return Text(f"{data_speed:.1f}{suffix} it/s", style="progress.percentage")
 
 
-"""
-Define custom progress bar.
-Usage:
-
-```python
-with progress_bar as p:
-    for i in p.track(range(1000)):
-        # Do something here
-        pass
-```
-"""
-progress_bar = RichProgress(
-    TextColumn("[progress.description]{task.description}"),
-    TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-    BarColumn(),
-    MofNCompleteColumn(),
-    TextColumn("["),
-    TimeElapsedColumn(),
-    TextColumn("<"),
-    TimeRemainingColumn(),
-    TextColumn(","),
-    RateColumn(),
-    TextColumn("]"),
-)
-
-
 class Progress(RichProgress):
     def __init__(self, **kwargs):
         super().__init__(
@@ -132,9 +107,21 @@ class Progress(RichProgress):
 
 
 class ProgressBar:
-    def __init__(self, type: str = "auto", total: float = 100, desc: str = "", transient: bool = False, **kwargs):
+    def __init__(
+        self,
+        type: str = "auto",
+        total: float = 100,
+        desc: str = "",
+        transient: bool = False,
+        report_exec_time=True,
+        **kwargs,
+    ):
         assert type in ["auto", "rich", "tqdm"], "Invalid progress bar type. Please choose from 'auto', 'rich', 'tqdm'."
         self.type = type
+        self.desc = desc
+        self.report_exec_time = report_exec_time and transient
+        if self.report_exec_time:
+            self.timer = Timer()
 
         if type == "auto":
             self.type = "rich"
@@ -153,22 +140,28 @@ class ProgressBar:
         self.pbar = pbar
         self.task_id = task_id
 
-    def update(self, advance: int = 1):
+    def update(self, advance: int = 1, **kwargs):
         """
         Update the progress bar with the specified advance amount.
         """
         if self.task_id is not None:
-            self.pbar.update(self.task_id, advance=advance)
+            self.pbar.update(self.task_id, advance=advance, **kwargs)
         else:
-            self.pbar.update(advance)
+            self.pbar.update(advance, **kwargs)
 
         return None
 
     def __enter__(self):
+        if self.report_exec_time:
+            self.timer.__enter__()
         return self.pbar.__enter__()
 
     def __exit__(self, *args):
-        return self.pbar.__exit__(*args)
+        exit_return = self.pbar.__exit__(*args)
+        if self.report_exec_time:
+            self.timer.__exit__(*args)
+            logger.info(f"Action [{self.desc}] took {self.timer.time} seconds")
+        return exit_return
 
 
 def set_logging(log_path: Optional[str] = None, level: str = "NOTSET"):
