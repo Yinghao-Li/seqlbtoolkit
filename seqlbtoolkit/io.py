@@ -109,9 +109,9 @@ class Progress(RichProgress):
 class ProgressBar:
     def __init__(
         self,
-        type: str = "auto",
         total: float = 100,
         desc: str = "",
+        type: str = "auto",
         transient: bool = False,
         report_exec_time=True,
         **kwargs,
@@ -133,8 +133,7 @@ class ProgressBar:
             task_id = pbar.add_task(desc, total=total)
 
         else:
-            # Fallback or explicitly "tqdm"
-            pbar = tqdm(total=total, desc=desc)
+            pbar = tqdm(total=total, desc=desc, leave=transient)
             task_id = None
 
         self.pbar = pbar
