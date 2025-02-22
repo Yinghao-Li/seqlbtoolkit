@@ -1,8 +1,10 @@
 from setuptools import setup, find_packages
 
+# Read the long description from README.md
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
+# Package setup
 setup(
     name="SeqLbToolkit",
     version="0.6.14",
@@ -13,7 +15,13 @@ setup(
     description="Commonly-used functions for building sequence labeling models.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    keywords="nlp sequence-labeling ml machine-learning natural-language-processing",
+    keywords=[
+        "nlp",
+        "sequence-labeling",
+        "ml",
+        "machine-learning",
+        "natural-language-processing",
+    ],
     zip_safe=False,
     classifiers=[
         "Intended Audience :: Developers",
