@@ -114,6 +114,7 @@ class ProgressBar:
         type: str = "auto",
         transient: bool = False,
         report_exec_time=True,
+        disable: bool = False,
         **kwargs,
     ):
         assert type in ["auto", "rich", "tqdm"], "Invalid progress bar type. Please choose from 'auto', 'rich', 'tqdm'."
@@ -138,11 +139,15 @@ class ProgressBar:
 
         self.pbar = pbar
         self.task_id = task_id
+        self.disable = disable
 
     def update(self, advance: int = 1, **kwargs):
         """
         Update the progress bar with the specified advance amount.
         """
+        if self.disable:
+            return None
+
         if self.task_id is not None:
             self.pbar.update(self.task_id, advance=advance, **kwargs)
         else:
@@ -151,16 +156,28 @@ class ProgressBar:
         return None
 
     def __enter__(self):
-        if self.report_exec_time:
-            self.timer.__enter__()
-        return self.pbar.__enter__()
+        if self.disable:
+            return None
+        try:
+            if self.report_exec_time:
+                self.timer.__enter__()
+            return self.pbar.__enter__()
+        except Exception as e:
+            logger.warning(f"Failed to enter the progress bar: {e}")
+            return None
 
     def __exit__(self, *args):
-        exit_return = self.pbar.__exit__(*args)
-        if self.report_exec_time:
-            self.timer.__exit__(*args)
-            logger.info(f"Action [{self.desc}] took {self.timer.time} seconds")
-        return exit_return
+        if self.disable:
+            return None
+        try:
+            exit_return = self.pbar.__exit__(*args)
+            if self.report_exec_time:
+                self.timer.__exit__(*args)
+                logger.info(f"Action [{self.desc}] took {self.timer.time} seconds")
+            return exit_return
+        except Exception as e:
+            logger.warning(f"Failed to exit the progress bar: {e}")
+            return None
 
 
 def set_logging(log_path: Optional[str] = None, level: str = "NOTSET"):

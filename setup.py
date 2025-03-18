@@ -7,7 +7,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 # Package setup
 setup(
     name="SeqLbToolkit",
-    version="0.6.16",
+    version="0.6.17",
     author="Yinghao Li",
     author_email="yinghaoli@gatech.edu",
     license="MIT",
