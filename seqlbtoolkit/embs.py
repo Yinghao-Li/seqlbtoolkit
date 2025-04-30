@@ -1,8 +1,9 @@
 import logging
 import torch
 import numpy as np
-from .io import progress_bar
+from .io import Progress
 
+progress_bar = Progress()
 
 logger = logging.getLogger(__name__)
 
