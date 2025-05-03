@@ -32,7 +32,6 @@ logger = logging.getLogger(__name__)
 
 
 __all__ = [
-    "progress_bar",
     "ProgressBar",
     "set_logging",
     "log_args",
