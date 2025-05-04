@@ -3,7 +3,6 @@ import regex
 import torch
 import logging
 import numpy as np
-from dataclasses import dataclass
 from typing import Optional, Union
 
 logger = logging.getLogger(__name__)
@@ -89,7 +88,7 @@ class ModelBuffer:
 
         model_cp = copy.deepcopy(model)
         try:
-            model_cp.to('cpu')
+            model_cp.to("cpu")
         except AttributeError:
             pass
 
@@ -101,8 +100,9 @@ class ModelBuffer:
         else:
             self.sort()
 
-            if (self._metrics[-1] >= metric and self.smaller_is_better) \
-                    or (self._metrics[-1] <= metric and not self.smaller_is_better):
+            if (self._metrics[-1] >= metric and self.smaller_is_better) or (
+                self._metrics[-1] <= metric and not self.smaller_is_better
+            ):
                 self._metrics[-1] = metric
                 self._model_state_dicts[-1] = model_cp.state_dict()
 

@@ -1,9 +1,7 @@
 import logging
 import torch
 import numpy as np
-from .io import Progress
-
-progress_bar = Progress()
+from seqlbtoolkit.io import ProgressBar
 
 logger = logging.getLogger(__name__)
 
@@ -97,58 +95,6 @@ def build_bert_token_embeddings(
     return tk_emb_seq_list
 
 
-def build_emb_helper_legacy(
-    tk_seq_list: list[list[str]],
-    tokenizer,
-    model,
-    device="cpu",
-    prepend_cls_embs: bool = False,
-):
-    """
-    Helper function for budding bert embeddings for tokenized sequences (deprecated)
-    """
-
-    tk_emb_seq_list = list()
-
-    with progress_bar as pbar:
-        for tk_seq in pbar.track(tk_seq_list):
-            encs = tokenizer(tk_seq, is_split_into_words=True, add_special_tokens=True, return_offsets_mapping=True)
-            input_ids = torch.tensor([encs.input_ids], device=device)
-            offsets_mapping = np.array(encs.offset_mapping)
-
-            # calculate BERT last layer embeddings
-            with torch.no_grad():
-                # get the last hidden state from the BERT model
-                last_hidden_states = model(input_ids)[0].squeeze(0).to("cpu")
-                # remove the token embeddings regarding the [CLS] and [SEP]
-                trunc_hidden_states = last_hidden_states[1:-1, :]
-
-            ori2bert_tk_ids = list()
-            idx = 0
-            for tk_start in offsets_mapping[1:-1, 0] == 0:
-                if tk_start:
-                    ori2bert_tk_ids.append([idx])
-                else:
-                    ori2bert_tk_ids[-1].append(idx)
-                idx += 1
-
-            emb_list = list()
-            for ids in ori2bert_tk_ids:
-                embeddings = trunc_hidden_states[ids, :]  # first dim could be 1 or n
-                emb_list.append(embeddings.mean(dim=0))
-
-            if prepend_cls_embs:
-                # add back the embedding of [CLS] as the sentence embedding
-                emb_list = [last_hidden_states[0, :]] + emb_list
-
-            bert_emb = torch.stack(emb_list)
-            assert not bert_emb.isnan().any(), ValueError("NaN Embeddings!")
-            tk_emb_seq_list.append(bert_emb.detach().cpu())
-
-    return tk_emb_seq_list
-
-
-# noinspection PyComparisonWithNone
 def build_emb_helper(
     tk_seq_list: list[list[str]],
     tokenizer,
@@ -174,9 +120,9 @@ def build_emb_helper(
     model.eval()
 
     tk_emb_seq_list = list()
-
-    with progress_bar as pbar:
-        for tk_seq in pbar.track(tk_seq_list):
+    pbar = ProgressBar(total=len(tk_seq_list), desc="Building BERT embeddings")
+    with pbar:
+        for tk_seq in tk_seq_list:
             # `substitute_unknown_tokens` should be called outside this function
             # tk_seq = substitute_unknown_tokens(tk_seq, tokenizer)
             tokenized_text = tokenizer(tk_seq, is_split_into_words=True)
@@ -223,5 +169,7 @@ def build_emb_helper(
             bert_emb = torch.stack(emb_list)
             assert not bert_emb.isnan().any(), ValueError("NaN Embeddings!")
             tk_emb_seq_list.append(bert_emb.detach().cpu())
+
+            pbar.update()
 
     return tk_emb_seq_list
